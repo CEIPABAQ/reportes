@@ -483,6 +483,7 @@ document.querySelectorAll('.pa table').forEach(tabla => {
     th.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ordenar(); } });
   });
 });
+const nf1 = new Intl.NumberFormat('es-CO', {maximumFractionDigits: 1});
 function cuerpo(tb, id, cols) {
   const g = dash.data(id);
   tb.replaceChildren();
@@ -495,11 +496,33 @@ function cuerpo(tb, id, cols) {
     const c = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'es', {numeric: true});
     return o.dir === 'desc' ? -c : c;
   });
+  const tabla = tb.closest('table');
+  const etiquetas = tabla ? [...tabla.querySelectorAll('thead th')].map(th => th.textContent.trim()) : [];
+  // Promedio de lo que se ve: media simple de cada columna numérica
+  const prom = cols.map(([k]) => { const vs = filas.map(r => r[k]).filter(v => typeof v === 'number' && isFinite(v)); return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null; });
+  const conProm = filas.length > 1;
   filas.forEach(r => {
     const tr = document.createElement('tr');
-    cols.forEach(([k, f, cls]) => { const td = document.createElement('td'); const c = typeof cls === 'function' ? cls(r[k]) : cls; if (c) td.className = c; td.textContent = r[k] == null ? '—' : f(r[k]); tr.appendChild(td); });
+    cols.forEach(([k, f, cls], i) => {
+      const td = document.createElement('td'); const c = typeof cls === 'function' ? cls(r[k]) : cls; if (c) td.className = c;
+      if (etiquetas[i]) td.dataset.label = etiquetas[i];
+      td.textContent = r[k] == null ? '—' : f(r[k]);
+      if (conProm && typeof r[k] === 'number' && prom[i] != null && r[k] < prom[i] - 1e-9) td.classList.add('bajo');
+      tr.appendChild(td);
+    });
     tb.appendChild(tr);
   });
+  if (conProm) {
+    const tr = document.createElement('tr'); tr.className = 'prom';
+    cols.forEach(([k, f, cls], i) => {
+      const td = document.createElement('td'); if (etiquetas[i]) td.dataset.label = etiquetas[i];
+      if (i === 0) td.textContent = 'Promedio';
+      else if (prom[i] == null) { td.textContent = ''; }
+      else { td.textContent = f === n0 ? nf1.format(prom[i]) : f(prom[i]); const c = typeof cls === 'function' ? cls(prom[i]) : ''; if (c) td.className = c; }
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  }
 }
 const S = String;
 dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
