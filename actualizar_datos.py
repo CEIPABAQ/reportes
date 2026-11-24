@@ -6,15 +6,14 @@ Uso:
     python actualizar_datos.py "dashboard-call_history-AAAAMMDD.xlsx"
 
 Genera datos.js en la misma carpeta. Luego sube ese archivo a GitHub.
-Reglas: conectada = answered Yes; efectiva = conectada con etiqueta "Contactado"
-(sin "no puede hablar" ni "familiar") y al menos 30 s en llamada.
+Reglas: conectada = answered Yes; efectiva = conectada con cualquier etiqueta que diga
+"Contactado" (incluye "no puede hablar" y "familiar"), sin importar la duración.
 Posgrados: Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados.
 """
 import json, sys, os
 import pandas as pd
 
 POSGRADOS = {'Lina Beleno', 'Ana Isabel Zambrano Avendano'}
-MIN_SEGUNDOS_EFECTIVA = 30
 
 def main(src, out):
     df = pd.read_excel(src)
@@ -23,7 +22,7 @@ def main(src, out):
     df['y'] = df.answered.eq('Yes')
     df['dur'] = df['duration (in call)'].fillna(0)
     tg = df.tags.fillna('')
-    eff = df.y & tg.str.contains('Contactado') & ~tg.str.contains('no puede hablar') & ~tg.str.contains('familiar') & (df.dur >= MIN_SEGUNDOS_EFECTIVA)
+    eff = df.y & tg.str.contains('Contactado')
     df['c'] = 'no'; df.loc[df.y, 'c'] = 'auto'; df.loc[eff, 'c'] = 'efec'
     def tip(t):
         p = [x.strip() for x in str(t).split(',') if x.strip() and x.strip() != 'Local Presence']

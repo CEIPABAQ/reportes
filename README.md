@@ -39,7 +39,7 @@ Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `a
 ## Reglas de clasificación
 
 - **Conectada:** Aircall la marca como contestada (`answered = Yes`). Incluye buzón y mensajes de la operadora.
-- **Efectiva:** conectada, con etiqueta "Contactado" y al menos 30 segundos de conversación. No cuentan "Contactado no puede hablar" ni "Contactado Mensaje con familiar/conocido".
+- **Efectiva:** conectada y con cualquier etiqueta que diga "Contactado" (incluye "no puede hablar" y "Mensaje con familiar/conocido"), sin importar la duración.
 - **% conectadas** = conectadas / llamadas. **% efectivas** = efectivas / conectadas.
 - **Semanas:** de lunes a domingo; la semana 1 empieza el 12 de octubre de 2026. **Núcleos:** periodos de dos meses desde el 12 de octubre.
 - **Equipos:** Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados.
