@@ -81,7 +81,9 @@
     <button type="button" role="tab" data-tab="no-conectadas" aria-selected="false">No conectadas</button>
     <button type="button" role="tab" data-tab="entrantes" aria-selected="false">Entrantes</button>
     <button type="button" role="tab" data-tab="por-hora" aria-selected="false">Por hora</button>
+    <button type="button" role="tab" data-tab="mapa-calor" aria-selected="false">Mapa de calor</button>
     <button type="button" role="tab" data-tab="rellamadas" aria-selected="false">Rellamadas</button>
+    <button type="button" role="tab" data-tab="semana-a-semana" aria-selected="false">Semana a semana</button>
   </div>
 
   <!-- SALIENTES -->
@@ -246,6 +248,43 @@
         <tbody data-draw="t_horas"></tbody>
       </table>
     </div>
+    <div id="franja-asesoras">
+      <h2>Mejor franja por asesora</h2>
+      <p class="say">La hora en que cada asesora conecta más llamadas y la hora en que logra su mejor porcentaje de efectivas.</p>
+      <div class="tw">
+        <table data-source="franja_asesoras" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora</th>
+            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="hora_conect" aria-sort="none" tabindex="0">Hora con más conectadas</th>
+            <th data-field="conectadas_hora" aria-sort="none" tabindex="0">Conectadas en esa hora</th>
+            <th data-field="hora_efec" aria-sort="none" tabindex="0">Hora con mejor % efectivas</th>
+            <th data-field="pct_efec_hora" aria-sort="none" tabindex="0">% efectivas en esa hora</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas general</th>
+          </tr></thead>
+          <tbody data-draw="t_franja"></tbody>
+        </table>
+      </div>
+      <p class="cap">Para la mejor hora por % de efectivas solo cuentan las horas con al menos 10 conectadas y al menos el 5 % de las conectadas de la asesora, para que una hora con pocas llamadas no salga como la mejor por azar.</p>
+    </div>
+  </section>
+
+  <!-- MAPA DE CALOR -->
+  <section class="tab" id="mapa-calor" role="tabpanel" aria-label="Mapa de calor" hidden>
+    <p class="say">Entre las combinaciones con suficientes llamadas, la mejor para conectar fue el <b data-draw="tx" data-source="mapa_mejor" data-field="celda_conect" data-row="0">—</b>, con <b data-draw="p" data-source="mapa_mejor" data-field="pct_conect" data-row="0">—</b> de conectadas. La de mayor efectividad total fue el <b data-draw="tx" data-source="mapa_mejor" data-field="celda_efec" data-row="0">—</b>, donde el <b data-draw="p" data-source="mapa_mejor" data-field="efec_llamadas" data-row="0">—</b> de las llamadas terminó en efectiva.</p>
+    <div id="mapa">
+      <h2>Día de la semana y hora</h2>
+      <div class="seg" id="seg-mapa" role="group" aria-label="Qué mostrar en el mapa">
+        <button type="button" data-m="pct_conect" aria-pressed="true">% conectadas</button>
+        <button type="button" data-m="pct_efec" aria-pressed="false">% efectivas</button>
+        <button type="button" data-m="efec_llamadas" aria-pressed="false">% efectividad total</button>
+        <button type="button" data-m="llamadas" aria-pressed="false">Llamadas</button>
+        <button type="button" data-m="conectadas" aria-pressed="false">Conectadas</button>
+        <button type="button" data-m="efectivas" aria-pressed="false">Efectivas</button>
+      </div>
+      <div class="chart" data-draw="ch_mapa" data-source="mapa_s" role="img" aria-label="Mapa de calor por día de la semana y hora" style="margin-top:var(--cds-gap-md)">—</div>
+      <p class="cap">Entre más oscura la celda, mejor resultado. En los porcentajes solo se colorean las celdas con al menos 20 llamadas (o 20 conectadas para % efectivas); las demás aparecen con un punto. Pasa el cursor por una celda para ver el detalle.</p>
+    </div>
   </section>
 
   <!-- RELLAMADAS -->
@@ -282,6 +321,93 @@
       </table>
     </div>
     <p class="cap">El intento se cuenta por número de cliente desde el 13 de octubre. Con un filtro de fechas, una llamada puede ser 3.er intento aunque los dos anteriores queden fuera del filtro.</p>
+  </section>
+
+  <!-- SEMANA A SEMANA -->
+  <section class="tab" id="semana-a-semana" role="tabpanel" aria-label="Semana a semana" hidden>
+    <div id="elegir-semanas">
+      <div class="seg-fila"><span>Semana actual</span><div class="seg" data-draw="chips_a" data-source="base_cmp" role="group" aria-label="Semana actual"></div></div>
+      <div class="seg-fila"><span>Comparar con</span><div class="seg" data-draw="chips_b" data-source="base_cmp" role="group" aria-label="Semana con la que se compara"></div></div>
+      <p class="cap">Aquí las semanas se eligen con estos botones; los filtros de arriba de fecha y semanas no aplican. Los de núcleos, equipos y asesoras sí.</p>
+    </div>
+    <p class="say">Comparando la <b data-draw="tx" data-source="cmp_kpi" data-field="sem_a" data-row="0">—</b> con la <b data-draw="tx" data-source="cmp_kpi" data-field="sem_b" data-row="0">—</b>.</p>
+    <div class="cards seis">
+      <div class="card"><span class="k">Llamadas</span><span class="v" data-draw="n" data-source="cmp_kpi" data-field="llamadas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="n" data-source="cmp_kpi" data-field="llamadas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pct" data-source="cmp_kpi" data-field="cambio_llamadas" data-row="0">—</span></span></div>
+      <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="cmp_kpi" data-field="conectadas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="n" data-source="cmp_kpi" data-field="conectadas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pct" data-source="cmp_kpi" data-field="cambio_conectadas" data-row="0">—</span></span></div>
+      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-source="cmp_kpi" data-field="efectivas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="n" data-source="cmp_kpi" data-field="efectivas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pct" data-source="cmp_kpi" data-field="cambio_efectivas" data-row="0">—</span></span></div>
+      <div class="card"><span class="k">% conectadas</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="pct_conect_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="pct_conect_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_pct_conect" data-row="0">—</span></span></div>
+      <div class="card"><span class="k">% efectivas</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="pct_efec_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="pct_efec_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_pct_efec" data-row="0">—</span></span></div>
+      <div class="card"><span class="k">% efectividad total</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="efec_llamadas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="efec_llamadas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_efec_llamadas" data-row="0">—</span></span></div>
+    </div>
+    <div id="cmp-equipos">
+      <h2>Por equipo</h2>
+      <div class="tw">
+        <table data-source="cmp_equipos" data-row-key="equipo">
+          <thead><tr>
+            <th data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="llamadas_a" aria-sort="none" tabindex="0">Llamadas actual</th>
+            <th data-field="llamadas_b" aria-sort="none" tabindex="0">Llamadas comparada</th>
+            <th data-field="cambio_llamadas" aria-sort="none" tabindex="0">Cambio llamadas</th>
+            <th data-field="pct_conect_a" aria-sort="none" tabindex="0">% conectadas actual</th>
+            <th data-field="pct_conect_b" aria-sort="none" tabindex="0">% conectadas comparada</th>
+            <th data-field="cambio_pct_conect" aria-sort="none" tabindex="0">Cambio % conectadas</th>
+            <th data-field="pct_efec_a" aria-sort="none" tabindex="0">% efectivas actual</th>
+            <th data-field="pct_efec_b" aria-sort="none" tabindex="0">% efectivas comparada</th>
+            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_cmp_equipos"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="cmp-asesoras">
+      <h2>Por asesora</h2>
+      <div class="tw">
+        <table data-source="cmp_asesoras" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora</th>
+            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="llamadas_a" aria-sort="none" tabindex="0">Llamadas actual</th>
+            <th data-field="llamadas_b" aria-sort="none" tabindex="0">Llamadas comparada</th>
+            <th data-field="cambio_llamadas" aria-sort="none" tabindex="0">Cambio llamadas</th>
+            <th data-field="pct_conect_a" aria-sort="none" tabindex="0">% conectadas actual</th>
+            <th data-field="pct_conect_b" aria-sort="none" tabindex="0">% conectadas comparada</th>
+            <th data-field="cambio_pct_conect" aria-sort="none" tabindex="0">Cambio % conectadas</th>
+            <th data-field="pct_efec_a" aria-sort="none" tabindex="0">% efectivas actual</th>
+            <th data-field="pct_efec_b" aria-sort="none" tabindex="0">% efectivas comparada</th>
+            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_cmp_asesoras"></tbody>
+        </table>
+      </div>
+      <p class="cap">"Actual" es la semana elegida arriba y "comparada" la del segundo renglón. En llamadas el cambio es porcentual; en los porcentajes, la diferencia en puntos. Si una de las dos semanas está en curso, no se compara el volumen.</p>
+    </div>
+    <div id="g-semanal">
+      <h2>% conectadas y % efectivas por semana</h2>
+      <div class="chart" data-draw="ch_semanal" data-source="semanas_s" role="img" aria-label="Porcentaje de conectadas y de efectivas por semana">—</div>
+    </div>
+    <div id="semanas">
+      <h2>Evolución semanal</h2>
+      <p class="say">Todas las semanas, cada una frente a la anterior.</p>
+      <div class="tw">
+        <table data-source="semanas_s" data-row-key="semana">
+          <thead><tr>
+            <th data-field="semana" aria-sort="none" tabindex="0">Semana</th>
+            <th class="eq" data-field="fechas" aria-sort="none" tabindex="0">Fechas</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
+            <th data-field="cambio_llamadas" aria-sort="none" tabindex="0">Cambio llamadas</th>
+            <th data-field="cambio_pct_conect" aria-sort="none" tabindex="0">Cambio % conectadas</th>
+            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_semanas"></tbody>
+        </table>
+      </div>
+      <p class="cap">Cambio frente a la semana anterior: en llamadas, variación porcentual; en los porcentajes, diferencia en puntos. Una semana "en curso" todavía no tiene todos sus días, por eso no se compara su volumen de llamadas.</p>
+    </div>
   </section>
 
   <details id="definiciones">

@@ -146,6 +146,113 @@ dash.calc('horas_s', {
   inputs: ['filtro'], title: 'Salientes por hora', description: 'Indicadores de salientes por hora de inicio.',
   fn: (filtro) => [...agrupar(filtro.filter(r => r.direccion === 'Saliente'), 'hora')].sort((x, y) => x[0] - y[0]).map(([h, rs]) => ({hora: String(h).padStart(2, '0') + ':00', ...medir(rs)}))
 });
+dash.calc('franja_asesoras', {
+  inputs: ['filtro'], title: 'Mejor franja por asesora',
+  description: 'Para cada asesora: la hora con más conectadas y la hora con mejor porcentaje de efectivas (solo horas con al menos 10 conectadas y el 5 % de sus conectadas).',
+  fn: (filtro) => [...agrupar(filtro.filter(r => r.direccion === 'Saliente'), 'asesora')].map(([a, rs]) => {
+    const total = medir(rs);
+    const horas = [...agrupar(rs, 'hora')].map(([h, hs]) => ({hora: String(h).padStart(2, '0') + ':00', ...medir(hs)}));
+    const masConect = horas.reduce((m, h) => (!m || h.conectadas > m.conectadas) ? h : m, null);
+    const minimo = Math.max(10, total.conectadas * 0.05);
+    const elegibles = horas.filter(h => h.conectadas >= minimo && h.pct_efec != null);
+    const mejorEfec = elegibles.reduce((m, h) => (!m || h.pct_efec > m.pct_efec) ? h : m, null);
+    return {asesora: a, equipo: rs[0].equipo,
+      hora_conect: masConect && masConect.conectadas > 0 ? masConect.hora : null, conectadas_hora: masConect ? masConect.conectadas : null,
+      hora_efec: mejorEfec ? mejorEfec.hora : null, pct_efec_hora: mejorEfec ? mejorEfec.pct_efec : null, pct_efec: total.pct_efec};
+  }).sort((x, y) => (y.conectadas_hora || 0) - (x.conectadas_hora || 0))
+});
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const diaDe = f => (utc(f).getUTCDay() + 6) % 7;
+dash.calc('mapa_s', {
+  inputs: ['filtro'], title: 'Salientes por día de la semana y hora', description: 'Indicadores de salientes para cada combinación de día de la semana y hora.',
+  fn: (filtro) => {
+    const m = new Map();
+    for (const r of filtro) { if (r.direccion !== 'Saliente') continue; const k = diaDe(r.fecha) * 100 + r.hora; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+    return [...m].sort((a, b) => a[0] - b[0]).map(([k, rs]) => ({dia: DIAS[Math.floor(k / 100)], dia_n: Math.floor(k / 100), hora: String(k % 100).padStart(2, '0') + ':00', hora_n: k % 100, ...medir(rs)}));
+  }
+});
+dash.calc('mapa_mejor', {
+  inputs: ['mapa_s'], title: 'Mejor día y hora', description: 'Combinación de día y hora con mayor % de conectadas y con mayor % de efectividad total, entre las que tienen al menos 30 llamadas y el 1 % del total.',
+  fn: (mapa_s) => {
+    const tot = mapa_s.reduce((s, c) => s + c.llamadas, 0), min = Math.max(30, tot * 0.01);
+    const el = mapa_s.filter(c => c.llamadas >= min);
+    const mejor = k => el.filter(c => c[k] != null).sort((a, b) => b[k] - a[k])[0];
+    const a = mejor('pct_conect'), b = mejor('efec_llamadas');
+    return [{celda_conect: a ? `${a.dia.toLowerCase()} a las ${a.hora}` : null, pct_conect: a ? a.pct_conect : null,
+      celda_efec: b ? `${b.dia.toLowerCase()} a las ${b.hora}` : null, efec_llamadas: b ? b.efec_llamadas : null}];
+  }
+});
+dash.calc('base_cmp', {
+  inputs: ['llamadas'], title: 'Salientes para comparar semanas',
+  description: 'Salientes con los filtros de núcleos, equipos y asesoras. Los de fecha y semanas no se aplican: las semanas se eligen en la pestaña Semana a semana.',
+  fn: (llamadas) => {
+    const p = dash.params(); const nuc = lista(p.nucleos).map(Number), eq = lista(p.equipos), as = lista(p.asesoras);
+    return llamadas.filter(r => r.direccion === 'Saliente' && (!nuc.length || nuc.includes(nucleoDe(r.fecha))) && (!eq.length || eq.includes(r.equipo)) && (!as.length || as.includes(r.asesora)))
+      .map(r => Object.assign({}, r, {sem: semanaDe(r.fecha)}));
+  }
+});
+function semanasElegidas(rows) {
+  const p = dash.params();
+  const sems = [...new Set(rows.map(r => r.sem))].sort((a, b) => a - b);
+  if (!sems.length) return {a: null, b: null, sems, maxF: ''};
+  const maxF = rows.reduce((m, r) => r.fecha > m ? r.fecha : m, '');
+  const completas = sems.filter(s => addDays(inicioSemana(s), 6) <= maxF);
+  const defA = completas.length ? completas[completas.length - 1] : sems[sems.length - 1];
+  const a = p.cmp_a != null && sems.includes(+p.cmp_a) ? +p.cmp_a : defA;
+  const antes = sems.filter(s => s < a);
+  const b = p.cmp_b != null && sems.includes(+p.cmp_b) ? +p.cmp_b : (antes.length ? antes[antes.length - 1] : a);
+  return {a, b, sems, maxF};
+}
+const enCursoSem = (s, maxF) => addDays(inicioSemana(s), 6) > maxF;
+const nombreSemana = (s, maxF) => `semana ${s} (${fCorto(inicioSemana(s))} – ${fCorto(addDays(inicioSemana(s), 6))}${enCursoSem(s, maxF) ? ', en curso' : ''})`;
+function comparar(A, B, sinVolumen) {
+  const o = {};
+  for (const k of ['llamadas', 'conectadas', 'efectivas']) { o[k + '_a'] = A[k]; o[k + '_b'] = B[k]; o['cambio_' + k] = B[k] && !sinVolumen ? A[k] / B[k] - 1 : null; }
+  for (const k of ['pct_conect', 'pct_efec', 'efec_llamadas']) { o[k + '_a'] = A[k]; o[k + '_b'] = B[k]; o['cambio_' + k] = A[k] != null && B[k] != null ? A[k] - B[k] : null; }
+  return o;
+}
+dash.calc('cmp_kpi', {
+  inputs: ['base_cmp'], title: 'Comparación de dos semanas', description: 'Totales de la semana actual y de la comparada, con su cambio.',
+  fn: (base_cmp) => {
+    const {a, b, maxF} = semanasElegidas(base_cmp); if (a == null) return [];
+    const sin = enCursoSem(a, maxF) || enCursoSem(b, maxF);
+    return [{sem_a: nombreSemana(a, maxF), sem_b: nombreSemana(b, maxF), ...comparar(medir(base_cmp.filter(r => r.sem === a)), medir(base_cmp.filter(r => r.sem === b)), sin)}];
+  }
+});
+dash.calc('cmp_equipos', {
+  inputs: ['base_cmp'], title: 'Comparación de semanas por equipo', description: 'Semana actual frente a la comparada, por equipo.',
+  fn: (base_cmp) => {
+    const {a, b, maxF} = semanasElegidas(base_cmp); if (a == null) return [];
+    const sin = enCursoSem(a, maxF) || enCursoSem(b, maxF);
+    return ['Posgrados', 'Pregrados'].map(e => ({equipo: e, ...comparar(medir(base_cmp.filter(r => r.sem === a && r.equipo === e)), medir(base_cmp.filter(r => r.sem === b && r.equipo === e)), sin)})).filter(r => r.llamadas_a || r.llamadas_b);
+  }
+});
+dash.calc('cmp_asesoras', {
+  inputs: ['base_cmp'], title: 'Comparación de semanas por asesora', description: 'Semana actual frente a la comparada, por asesora.',
+  fn: (base_cmp) => {
+    const {a, b, maxF} = semanasElegidas(base_cmp); if (a == null) return [];
+    const sin = enCursoSem(a, maxF) || enCursoSem(b, maxF);
+    return [...agrupar(base_cmp.filter(r => r.sem === a || r.sem === b), 'asesora')].map(([as, rs]) => ({asesora: as, equipo: rs[0].equipo, ...comparar(medir(rs.filter(r => r.sem === a)), medir(rs.filter(r => r.sem === b)), sin)})).sort((x, y) => y.llamadas_a - x.llamadas_a);
+  }
+});
+dash.calc('semanas_s', {
+  inputs: ['base_cmp'], title: 'Salientes por semana', description: 'Indicadores por semana (lunes a domingo; la semana 1 empieza el 12 de octubre) y cambio frente a la semana anterior.',
+  fn: (base_cmp) => {
+    const s = base_cmp;
+    const maxF = s.reduce((m, r) => r.fecha > m ? r.fecha : m, '');
+    const rows = [...agrupar(s.map(r => Object.assign({}, r, {sem: semanaDe(r.fecha)})), 'sem')].sort((a, b) => a[0] - b[0]).map(([k, rs]) => {
+      const ini = inicioSemana(k), fin = addDays(ini, 6);
+      return {n: k, semana: `Semana ${k}`, fechas: `${fCorto(ini)} – ${fCorto(fin)}${fin > maxF ? ' (en curso)' : ''}`, enCurso: fin > maxF, ...medir(rs)};
+    });
+    const porN = new Map(rows.map(r => [r.n, r]));
+    return rows.map(r => {
+      const p = porN.get(r.n - 1);
+      const d = (k) => p && p[k] != null && r[k] != null ? r[k] - p[k] : null;
+      const {n, enCurso, ...resto} = r;
+      return {...resto, cambio_llamadas: p && p.llamadas && !enCurso ? r.llamadas / p.llamadas - 1 : null, cambio_pct_conect: d('pct_conect'), cambio_pct_efec: d('pct_efec')};
+    });
+  }
+});
 dash.calc('mejor_hora', {
   inputs: ['horas_s'], title: 'Mejor hora', description: 'Hora con mayor porcentaje de conectadas entre las que tienen al menos el 5 % de las llamadas.',
   fn: (horas_s) => { const tot = horas_s.reduce((s, h) => s + h.llamadas, 0); const c = horas_s.filter(h => h.llamadas >= tot * 0.05).sort((a, b) => b.pct_conect - a.pct_conect);
@@ -345,7 +452,7 @@ dash.draw('cal', el => {
 });
 
 /* ---------- Pestañas ---------- */
-const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'rellamadas'];
+const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana'];
 let tabActual = TABS.includes((location.hash || '').slice(1)) ? location.hash.slice(1) : 'salientes';
 function mostrar(id) {
   tabActual = id;
@@ -365,7 +472,7 @@ document.querySelectorAll('.pa table').forEach(tabla => {
   const nombre = tb.dataset.draw;
   tabla.querySelectorAll('th[aria-sort]').forEach(th => {
     const ordenar = () => {
-      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento'].includes(k);
+      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas'].includes(k);
       const actual = orden[nombre];
       const dir = actual && actual.k === k ? (actual.dir === 'desc' ? 'asc' : 'desc') : (texto ? 'asc' : 'desc');
       orden[nombre] = {k, dir};
@@ -390,7 +497,7 @@ function cuerpo(tb, id, cols) {
   });
   filas.forEach(r => {
     const tr = document.createElement('tr');
-    cols.forEach(([k, f, cls]) => { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = r[k] == null ? '—' : f(r[k]); tr.appendChild(td); });
+    cols.forEach(([k, f, cls]) => { const td = document.createElement('td'); const c = typeof cls === 'function' ? cls(r[k]) : cls; if (c) td.className = c; td.textContent = r[k] == null ? '—' : f(r[k]); tr.appendChild(td); });
     tb.appendChild(tr);
   });
 }
@@ -400,6 +507,63 @@ dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo
 dash.draw('t_nc', tb => cuerpo(tb, 'nc_asesora', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['no_conectadas', n0], ['pct_no', pc], ['sin_contestar', n0], ['no_disponible', n0], ['buzon', n0], ['solo_lp', n0], ['otras', n0]]));
 dash.draw('t_entrantes', tb => cuerpo(tb, 'asesoras_e', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_efec', pc]]));
 dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
+dash.draw('t_franja', tb => cuerpo(tb, 'franja_asesoras', [['asesora', S], ['equipo', S, 'eq'], ['hora_conect', S], ['conectadas_hora', n0], ['hora_efec', S], ['pct_efec_hora', pc], ['pct_efec', pc]]));
+const flecha = v => v > 0 ? '▲ +' : v < 0 ? '▼ −' : '';
+const cambioPct = v => flecha(v) + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' %';
+const cambioPts = v => flecha(v) + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' pts';
+const claseCambio = v => v == null ? '' : v > 0 ? 'sube' : v < 0 ? 'baja' : '';
+dash.draw('t_semanas', tb => cuerpo(tb, 'semanas_s', [['semana', S], ['fechas', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc], ['cambio_llamadas', cambioPct, claseCambio], ['cambio_pct_conect', cambioPts, claseCambio], ['cambio_pct_efec', cambioPts, claseCambio]]));
+const COLS_CMP = [['llamadas_a', n0], ['llamadas_b', n0], ['cambio_llamadas', v => cambioPct(v), claseCambio], ['pct_conect_a', pc], ['pct_conect_b', pc], ['cambio_pct_conect', v => cambioPts(v), claseCambio], ['pct_efec_a', pc], ['pct_efec_b', pc], ['cambio_pct_efec', v => cambioPts(v), claseCambio]];
+dash.draw('t_cmp_equipos', tb => cuerpo(tb, 'cmp_equipos', [['equipo', S], ...COLS_CMP]));
+dash.draw('t_cmp_asesoras', tb => cuerpo(tb, 'cmp_asesoras', [['asesora', S], ['equipo', S, 'eq'], ...COLS_CMP]));
+dash.draw('delta', el => {
+  const g = dash.data(el.dataset.source); const r = g.status === 'ok' && Array.isArray(g.data) ? g.data[+(el.dataset.row || 0)] : null;
+  const v = r ? r[el.dataset.field] : null;
+  el.className = claseCambio(v);
+  el.textContent = v == null ? 'sin comparar' : (el.dataset.kind === 'pts' ? cambioPts(v) : cambioPct(v));
+});
+function chips(cont, cual) {
+  const g = dash.data('base_cmp'); cont.replaceChildren();
+  if (g.status !== 'ok') { cont.textContent = '—'; return; }
+  const {a, b, sems, maxF} = semanasElegidas(g.data); const sel = cual === 'a' ? a : b;
+  sems.forEach(s => {
+    const btn = document.createElement('button'); btn.type = 'button';
+    btn.textContent = `S${s} · ${fCorto(inicioSemana(s))}${enCursoSem(s, maxF) ? ' (en curso)' : ''}`;
+    btn.setAttribute('aria-pressed', s === sel ? 'true' : 'false');
+    btn.onclick = () => dash.setParams(cual === 'a' ? {cmp_a: s} : {cmp_b: s});
+    cont.appendChild(btn);
+  });
+}
+dash.draw('chips_a', cont => chips(cont, 'a'));
+dash.draw('chips_b', cont => chips(cont, 'b'));
+dash.draw('ch_semanal', el => {
+  const rows = filasDe('semanas_s', el); if (!rows) return;
+  el.replaceChildren();
+  const A = PAL.acc, B = PAL.acc2;
+  const gb = dash.data('base_cmp'); const sel = gb.status === 'ok' ? semanasElegidas(gb.data) : {};
+  leyenda(el, [{name: '% conectadas', color: B}, {name: '% efectivas sobre conectadas', color: A}]);
+  const w = Math.max(el.clientWidth, 280), h = 240;
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).style('display', 'block').attr('role', 'img').attr('aria-label', 'Porcentaje de conectadas y de efectivas por semana');
+  const y = d3.scaleLinear().domain([0, d3.max(rows, r => Math.max(r.pct_conect || 0, r.pct_efec || 0)) || 0.1]).nice(4);
+  const ticks = y.ticks(4);
+  const m = {t: 16, r: 12, b: 28, l: medirTexto(svg, pc0(ticks[ticks.length - 1]), 11) + 12};
+  y.range([h - m.b, m.t]);
+  const dom = rows.map(r => r.semana);
+  const x = d3.scaleBand().domain(dom).range([m.l, w - m.r]).padding(0.2);
+  rows.forEach(r => { const n = +r.semana.split(' ')[1]; if (n === sel.a || n === sel.b) svg.append('rect').attr('x', x(r.semana)).attr('y', m.t).attr('width', x.bandwidth()).attr('height', h - m.b - m.t).attr('rx', 6).style('fill', '#efe6d4'); });
+  ejeY(svg, y, ticks, pc0, m, w);
+  const cx = s => x(s) + x.bandwidth() / 2;
+  [['pct_conect', B], ['pct_efec', A]].forEach(([k, c]) => {
+    const pts = rows.filter(r => r[k] != null);
+    svg.append('path').attr('d', d3.line().x(r => cx(r.semana)).y(r => y(r[k]))(pts)).style('fill', 'none').style('stroke', c).style('stroke-width', 2);
+    pts.forEach(r => { svg.append('circle').attr('cx', cx(r.semana)).attr('cy', y(r[k])).attr('r', 3.5).style('fill', c);
+      svg.append('text').attr('x', cx(r.semana)).attr('y', y(r[k]) - 8).attr('text-anchor', 'middle').style('fill', 'var(--color-fg)').style('font-size', '10px').style('font-variant-numeric', 'tabular-nums').text(pc0(r[k])); });
+  });
+  rows.forEach(r => svg.append('text').attr('x', cx(r.semana)).attr('y', h - m.b + 17).attr('text-anchor', 'middle').style('fill', 'var(--cds-text-secondary)').style('font-size', '11px').text('S' + r.semana.split(' ')[1]));
+  const tip = mkTip(el);
+  rows.forEach(r => svg.append('rect').attr('x', x(r.semana)).attr('y', m.t).attr('width', x.bandwidth()).attr('height', h - m.b - m.t).style('fill', 'transparent')
+    .on('mousemove', ev => tip.show([`${r.semana} · ${r.fechas}`, `${n0(r.llamadas)} llamadas`, `Conectadas: ${pc(r.pct_conect)}`, `Efectivas: ${pc(r.pct_efec)}`], ev)).on('mouseleave', () => tip.hide()));
+});
 dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc], ['primer_contacto', n0]]));
 
 /* ---------- Utilidades de gráficos ---------- */
@@ -591,6 +755,46 @@ dash.draw('ch_hora_efec_pct', el => {
   const mejor = elegibles.length ? d3.greatest(elegibles, r => r.pct_efec) : null;
   vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), sub: n0(r.conectadas), v: r.pct_efec || 0, text: pc0(r.pct_efec), color: r === mejor ? A : MUT,
     tip: [r.hora, `${n0(r.efectivas)} efectivas de ${n0(r.conectadas)} conectadas (${pc(r.pct_efec)})`, `${pc(r.efec_llamadas)} del total de llamadas`]})), {sub: true, aria: 'Porcentaje de efectivas por hora'});
+});
+let mapaMetrica = 'pct_conect';
+const METRICAS = {pct_conect: {pct: true, base: 'llamadas'}, pct_efec: {pct: true, base: 'conectadas'}, efec_llamadas: {pct: true, base: 'llamadas'}, llamadas: {}, conectadas: {}, efectivas: {}};
+document.querySelectorAll('#seg-mapa button').forEach(b => b.addEventListener('click', () => {
+  mapaMetrica = b.dataset.m;
+  document.querySelectorAll('#seg-mapa button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  dash.draw('ch_mapa');
+}));
+dash.draw('ch_mapa', el => {
+  const rows = filasDe('mapa_s', el); if (!rows) return;
+  el.replaceChildren();
+  const M = METRICAS[mapaMetrica], k = mapaMetrica;
+  const dias = [...new Set(rows.map(r => r.dia_n))].sort((a, b) => a - b);
+  const horas = [...new Set(rows.map(r => r.hora_n))].sort((a, b) => a - b);
+  const valido = r => r[k] != null && (!M.pct || r[M.base] >= 20);
+  const vals = rows.filter(valido).map(r => r[k]);
+  const lo = vals.length ? d3.min(vals) : 0, hi = vals.length ? d3.max(vals) : 1;
+  const fmt = M.pct ? pc0 : n0;
+  const ley = document.createElement('div'); ley.className = 'mapa-ley';
+  const a = document.createElement('span'); a.textContent = fmt(lo); const i = document.createElement('i'); const z = document.createElement('span'); z.textContent = fmt(hi);
+  ley.append(a, i, z); el.appendChild(ley);
+  const wrap = document.createElement('div'); wrap.className = 'tw'; el.appendChild(wrap);
+  const lw = 84, top = 24, w = Math.max(el.clientWidth, 640), cw = (w - lw) / horas.length, ch = 36, h = top + dias.length * ch;
+  const svg = d3.select(wrap).append('svg').attr('width', w).attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).style('display', 'block').attr('role', 'img').attr('aria-label', 'Mapa de calor por día y hora');
+  const color = d3.interpolateRgb('#f4ede0', '#46668a');
+  const tip = mkTip(el);
+  horas.forEach((hh, x) => svg.append('text').attr('x', lw + x * cw + cw / 2).attr('y', 14).attr('text-anchor', 'middle').style('fill', 'var(--cds-text-secondary)').style('font-size', '11px').text(String(hh).padStart(2, '0') + ':00'));
+  const porCelda = new Map(rows.map(r => [r.dia_n * 100 + r.hora_n, r]));
+  dias.forEach((d, y) => {
+    svg.append('text').attr('x', 0).attr('y', top + y * ch + ch / 2).attr('dy', '0.35em').style('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(DIAS[d]);
+    horas.forEach((hh, x) => {
+      const r = porCelda.get(d * 100 + hh);
+      const ok = r && valido(r), t = ok ? (hi > lo ? (r[k] - lo) / (hi - lo) : 1) : 0;
+      const cx = lw + x * cw, cy = top + y * ch;
+      const rect = svg.append('rect').attr('x', cx + 1.5).attr('y', cy + 1.5).attr('width', Math.max(0, cw - 3)).attr('height', ch - 3).attr('rx', 4).style('fill', ok ? color(t) : '#f7f2e8');
+      svg.append('text').attr('x', cx + cw / 2).attr('y', cy + ch / 2).attr('dy', '0.35em').attr('text-anchor', 'middle').style('pointer-events', 'none')
+        .style('fill', ok && t > 0.55 ? '#fffdf8' : (ok ? '#2b2a33' : '#b3a995')).style('font-size', cw < 46 ? '10px' : '11px').style('font-variant-numeric', 'tabular-nums').text(ok ? fmt(r[k]) : (r ? '·' : ''));
+      if (r) rect.on('mousemove', ev => tip.show([`${DIAS[d]} · ${r.hora}`, `${n0(r.llamadas)} llamadas`, `${n0(r.conectadas)} conectadas (${pc(r.pct_conect)})`, `${n0(r.efectivas)} efectivas (${pc(r.pct_efec)} de conectadas)`, `Efectividad total: ${pc(r.efec_llamadas)}`], ev)).on('mouseleave', () => tip.hide());
+    });
+  });
 });
 dash.draw('ch_intentos', el => {
   const rows = filasDe('intentos_s', el); if (!rows) return;
