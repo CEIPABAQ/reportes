@@ -121,9 +121,10 @@ dash.calc('kpi_s', {
   fn: (filtro) => { const s = filtro.filter(r => r.direccion === 'Saliente'); const f = s.map(r => r.fecha).sort();
     return [{desde: f[0] || null, hasta: f[f.length - 1] || null, ...medir(s)}]; }
 });
+function entrantes(rows) { return rows.filter(r => r.direccion === 'Entrante').map(r => r.clase === 'No contestada' ? r : Object.assign({}, r, {clase: 'Efectiva'})); }
 dash.calc('kpi_e', {
-  inputs: ['filtro'], title: 'Indicadores de entrantes', description: 'Totales y porcentajes de las llamadas entrantes filtradas.',
-  fn: (filtro) => [medir(filtro.filter(r => r.direccion === 'Entrante'))]
+  inputs: ['filtro'], title: 'Indicadores de entrantes', description: 'Totales de las llamadas entrantes filtradas. En entrantes, toda llamada conectada cuenta como efectiva.',
+  fn: (filtro) => [medir(entrantes(filtro))]
 });
 dash.calc('equipos_s', {
   inputs: ['filtro'], title: 'Salientes por equipo', description: 'Indicadores de salientes de Posgrados y Pregrados.',
@@ -134,8 +135,8 @@ dash.calc('asesoras_s', {
   fn: (filtro) => [...agrupar(filtro.filter(r => r.direccion === 'Saliente'), 'asesora')].map(([a, rs]) => ({asesora: a, equipo: rs[0].equipo, ...medir(rs)})).sort((x, y) => y.llamadas - x.llamadas)
 });
 dash.calc('asesoras_e', {
-  inputs: ['filtro'], title: 'Entrantes por asesora', description: 'Indicadores de entrantes de cada asesora.',
-  fn: (filtro) => [...agrupar(filtro.filter(r => r.direccion === 'Entrante'), 'asesora')].map(([a, rs]) => ({asesora: a, equipo: rs[0].equipo, ...medir(rs)})).sort((x, y) => y.llamadas - x.llamadas)
+  inputs: ['filtro'], title: 'Entrantes por asesora', description: 'Indicadores de entrantes de cada asesora. Toda entrante conectada cuenta como efectiva.',
+  fn: (filtro) => [...agrupar(entrantes(filtro), 'asesora')].map(([a, rs]) => ({asesora: a, equipo: rs[0].equipo, ...medir(rs)})).sort((x, y) => y.llamadas - x.llamadas)
 });
 dash.calc('diario_s', {
   inputs: ['filtro'], title: 'Salientes por día', description: 'Llamadas, conectadas y efectivas de cada día.',
@@ -394,12 +395,12 @@ function cuerpo(tb, id, cols) {
   });
 }
 const S = String;
-dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
-dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
+dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
+dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
 dash.draw('t_nc', tb => cuerpo(tb, 'nc_asesora', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['no_conectadas', n0], ['pct_no', pc], ['sin_contestar', n0], ['no_disponible', n0], ['buzon', n0], ['solo_lp', n0], ['otras', n0]]));
 dash.draw('t_entrantes', tb => cuerpo(tb, 'asesoras_e', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_efec', pc]]));
-dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
-dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['primer_contacto', n0]]));
+dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
+dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc], ['primer_contacto', n0]]));
 
 /* ---------- Utilidades de gráficos ---------- */
 function filasDe(id, el) {
@@ -576,6 +577,20 @@ dash.draw('ch_hora_efec', el => {
   const A = PAL.acc;
   vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), v: r.efectivas, text: n0(r.efectivas), color: A,
     tip: [r.hora, `${n0(r.efectivas)} efectivas`, `${pc(r.pct_efec)} de las conectadas`]})), {aria: 'Llamadas efectivas por hora'});
+});
+dash.draw('ch_hora_conect_tot', el => {
+  const rows = filasDe('horas_s', el); if (!rows) return;
+  const B = PAL.acc2;
+  vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), v: r.conectadas, text: n0(r.conectadas), color: B,
+    tip: [r.hora, `${n0(r.conectadas)} conectadas`, `de ${n0(r.llamadas)} llamadas`]})), {aria: 'Llamadas conectadas por hora'});
+});
+dash.draw('ch_hora_efec_pct', el => {
+  const rows = filasDe('horas_s', el); if (!rows) return;
+  const A = PAL.acc, tot = rows.reduce((s, r) => s + r.conectadas, 0);
+  const elegibles = rows.filter(r => r.conectadas >= tot * 0.05);
+  const mejor = elegibles.length ? d3.greatest(elegibles, r => r.pct_efec) : null;
+  vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), sub: n0(r.conectadas), v: r.pct_efec || 0, text: pc0(r.pct_efec), color: r === mejor ? A : MUT,
+    tip: [r.hora, `${n0(r.efectivas)} efectivas de ${n0(r.conectadas)} conectadas (${pc(r.pct_efec)})`, `${pc(r.efec_llamadas)} del total de llamadas`]})), {sub: true, aria: 'Porcentaje de efectivas por hora'});
 });
 dash.draw('ch_intentos', el => {
   const rows = filasDe('intentos_s', el); if (!rows) return;

@@ -89,7 +89,7 @@
     <div class="cards">
       <div class="card"><span class="k">Llamadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</span><span class="s">Salientes del periodo</span></div>
       <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b> de las llamadas</span></div>
-      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_s" data-field="efectivas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_efec" data-row="0">—</b> de las conectadas</span></div>
+      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_s" data-field="efectivas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_efec" data-row="0">—</b> de las conectadas · <b data-draw="p" data-source="kpi_s" data-field="efec_llamadas" data-row="0">—</b> del total de llamadas</span></div>
     </div>
 
     <div class="duo">
@@ -114,6 +114,7 @@
             <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
             <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
           </tr></thead>
           <tbody data-draw="t_equipos"></tbody>
         </table>
@@ -134,6 +135,7 @@
             <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
             <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
           </tr></thead>
           <tbody data-draw="t_asesoras"></tbody>
         </table>
@@ -199,22 +201,35 @@
           <tbody data-draw="t_entrantes"></tbody>
         </table>
       </div>
-      <p class="cap">Solo incluye las entrantes que trae la exportación de Aircall.</p>
+      <p class="cap">En entrantes, toda llamada conectada cuenta como efectiva. Solo incluye las entrantes que trae la exportación de Aircall.</p>
     </div>
   </section>
 
   <!-- POR HORA -->
   <section class="tab" id="por-hora" role="tabpanel" aria-label="Por hora" hidden>
     <p class="say">Entre las horas con al menos el 5 % de las llamadas, la mejor conexión fue a las <b data-draw="tx" data-source="mejor_hora" data-field="hora" data-row="0">—</b>, con <b data-draw="p" data-source="mejor_hora" data-field="pct_conect" data-row="0">—</b> de las llamadas conectadas.</p>
+    <h2>Conectadas por hora</h2>
     <div class="duo">
+      <div id="g-hora-conect-tot">
+        <h3>Total de conectadas por hora</h3>
+        <div class="chart" data-draw="ch_hora_conect_tot" data-source="horas_s" role="img" aria-label="Llamadas conectadas por hora">—</div>
+      </div>
       <div id="g-hora-cont">
         <h3>% de conectadas por hora</h3>
         <div class="chart" data-draw="ch_hora_cont" data-source="horas_s" role="img" aria-label="Porcentaje de conectadas por hora">—</div>
-        <p class="cap">Bajo cada hora, el número de llamadas hechas.</p>
+        <p class="cap">Conectadas / llamadas. Bajo cada hora, el número de llamadas hechas.</p>
       </div>
+    </div>
+    <h2>Efectivas por hora</h2>
+    <div class="duo">
       <div id="g-hora-efec">
-        <h3>Efectivas por hora</h3>
+        <h3>Total de efectivas por hora</h3>
         <div class="chart" data-draw="ch_hora_efec" data-source="horas_s" role="img" aria-label="Llamadas efectivas por hora">—</div>
+      </div>
+      <div id="g-hora-efec-pct">
+        <h3>% de efectivas por hora</h3>
+        <div class="chart" data-draw="ch_hora_efec_pct" data-source="horas_s" role="img" aria-label="Porcentaje de efectivas por hora">—</div>
+        <p class="cap">Efectivas / conectadas. Bajo cada hora, el número de conectadas.</p>
       </div>
     </div>
     <div class="tw" id="t-horas-wrap">
@@ -226,6 +241,7 @@
           <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
           <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
           <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
         </tr></thead>
         <tbody data-draw="t_horas"></tbody>
       </table>
@@ -259,6 +275,7 @@
           <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
           <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
           <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
           <th data-field="primer_contacto" aria-sort="none" tabindex="0">Primer contacto logrado</th>
         </tr></thead>
         <tbody data-draw="t_intentos"></tbody>
@@ -271,7 +288,8 @@
     <summary>Cómo se clasifica cada llamada</summary>
     <p><b>Conectada:</b> Aircall registró la llamada como contestada (answered = Yes). Incluye buzón, mensajes de la operadora y llamadas cortadas.</p>
     <p><b>Efectiva:</b> conectada y con cualquier etiqueta que diga "Contactado", incluidas "Contactado no puede hablar" y "Contactado Mensaje con familiar/conocido", sin importar la duración.</p>
-    <p><b>Porcentajes:</b> % conectadas = conectadas / llamadas. % efectivas = efectivas / conectadas.</p>
+    <p><b>Porcentajes:</b> % conectadas = conectadas / llamadas. % efectivas = efectivas / conectadas. % efectividad total = efectivas / llamadas.</p>
+    <p><b>Entrantes:</b> toda llamada entrante conectada cuenta como efectiva.</p>
     <p><b>Semanas:</b> de lunes a domingo; la semana 1 empieza el 12 de octubre. <b>Núcleos:</b> periodos de dos meses; el núcleo 1 va del 12 de octubre al 11 de diciembre.</p>
     <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados.</p>
   </details>
