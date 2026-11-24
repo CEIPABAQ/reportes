@@ -484,6 +484,10 @@ document.querySelectorAll('.pa table').forEach(tabla => {
   });
 });
 const nf1 = new Intl.NumberFormat('es-CO', {maximumFractionDigits: 1});
+// Cada pestaña tiene su propia casilla: solo apaga o enciende el resaltado de esa pestaña
+document.querySelectorAll('[data-resalte]').forEach(cb => cb.addEventListener('change', () => {
+  const sec = cb.closest('section.tab'); if (sec) sec.classList.toggle('sin-resalte', !cb.checked);
+}));
 function cuerpo(tb, id, cols) {
   const g = dash.data(id);
   tb.replaceChildren();
@@ -506,7 +510,7 @@ function cuerpo(tb, id, cols) {
     cols.forEach(([k, f, cls], i) => {
       const td = document.createElement('td'); const c = typeof cls === 'function' ? cls(r[k]) : cls; if (c) td.className = c;
       if (etiquetas[i]) td.dataset.label = etiquetas[i];
-      td.textContent = r[k] == null ? '—' : f(r[k]);
+      const num = document.createElement('span'); num.className = 'num'; num.textContent = r[k] == null ? '—' : f(r[k]); td.appendChild(num);
       if (conProm && typeof r[k] === 'number' && prom[i] != null && r[k] < prom[i] - 1e-9) td.classList.add('bajo');
       tr.appendChild(td);
     });

@@ -88,6 +88,7 @@
 
   <!-- SALIENTES -->
   <section class="tab" id="salientes" role="tabpanel" aria-label="Salientes">
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <div class="cards">
       <div class="card"><span class="k">Llamadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</span><span class="s">Salientes del periodo</span></div>
       <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b> de las llamadas</span></div>
@@ -148,6 +149,7 @@
 
   <!-- NO CONECTADAS -->
   <section class="tab" id="no-conectadas" role="tabpanel" aria-label="No conectadas" hidden>
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <div class="cards">
       <div class="card"><span class="k">No conectadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="no_conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_no" data-row="0">—</b> de las salientes</span></div>
       <div class="card"><span class="k">Llamadas salientes</span><span class="v" data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</span><span class="s">Del periodo filtrado</span></div>
@@ -182,6 +184,7 @@
 
   <!-- ENTRANTES -->
   <section class="tab" id="entrantes" role="tabpanel" aria-label="Entrantes" hidden>
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <div class="cards">
       <div class="card"><span class="k">Entrantes</span><span class="v" data-draw="n" data-source="kpi_e" data-field="llamadas" data-row="0">—</span><span class="s">Llamadas que entraron</span></div>
       <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_e" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_e" data-field="pct_conect" data-row="0">—</b> de las entrantes</span></div>
@@ -209,6 +212,7 @@
 
   <!-- POR HORA -->
   <section class="tab" id="por-hora" role="tabpanel" aria-label="Por hora" hidden>
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <p class="say">Entre las horas con al menos el 5 % de las llamadas, la mejor conexión fue a las <b data-draw="tx" data-source="mejor_hora" data-field="hora" data-row="0">—</b>, con <b data-draw="p" data-source="mejor_hora" data-field="pct_conect" data-row="0">—</b> de las llamadas conectadas.</p>
     <h2>Conectadas por hora</h2>
     <div class="duo">
@@ -289,6 +293,7 @@
 
   <!-- RELLAMADAS -->
   <section class="tab" id="rellamadas" role="tabpanel" aria-label="Rellamadas" hidden>
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <div class="cards">
       <div class="card"><span class="k">Primeros intentos</span><span class="v" data-draw="n" data-source="kpi_s" data-field="primeros" data-row="0">—</span><span class="s">Primera llamada a un número</span></div>
       <div class="card"><span class="k">Rellamadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="rellamadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_rellamadas" data-row="0">—</b> de las salientes</span></div>
@@ -325,6 +330,7 @@
 
   <!-- SEMANA A SEMANA -->
   <section class="tab" id="semana-a-semana" role="tabpanel" aria-label="Semana a semana" hidden>
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <div id="elegir-semanas">
       <div class="seg-fila"><span>Semana actual</span><div class="seg" data-draw="chips_a" data-source="base_cmp" role="group" aria-label="Semana actual"></div></div>
       <div class="seg-fila"><span>Comparar con</span><div class="seg" data-draw="chips_b" data-source="base_cmp" role="group" aria-label="Semana con la que se compara"></div></div>
@@ -417,7 +423,7 @@
     <p><b>Porcentajes:</b> % conectadas = conectadas / llamadas. % efectivas = efectivas / conectadas. % efectividad total = efectivas / llamadas.</p>
     <p><b>Entrantes:</b> toda llamada entrante conectada cuenta como efectiva.</p>
     <p><b>Semanas:</b> de lunes a domingo; la semana 1 empieza el 12 de octubre. <b>Núcleos:</b> periodos de dos meses; el núcleo 1 va del 12 de octubre al 11 de diciembre.</p>
-    <p><b>Tablas:</b> la última fila es el promedio simple de las filas que se ven con los filtros aplicados; las cifras por debajo de ese promedio se marcan en rosa.</p>
+    <p><b>Tablas:</b> la última fila es el promedio simple de las filas que se ven con los filtros aplicados; las cifras por debajo de ese promedio se marcan en rosa; el resaltado se puede apagar con la casilla de cada pestaña, y cada pestaña se maneja por separado.</p>
     <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados.</p>
   </details>
 
