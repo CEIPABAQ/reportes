@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de llamadas Aircall</title>
+<meta name="description" content="Llamadas de admisiones en Aircall: conectadas, efectivas, no conectadas, entrantes, horas y rellamadas, con filtros por fecha, semana, núcleo, equipo y asesora.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="pa-fondo">
+<div class="pa">
+  <header id="inicio">
+    <p class="eyebrow">Admisiones · Aircall</p>
+    <h1>Panel de llamadas Aircall</h1>
+    <p class="lead">Entre el <b data-draw="dt" data-source="kpi_s" data-field="desde" data-row="0">—</b> y el <b data-draw="dt" data-source="kpi_s" data-field="hasta" data-row="0">—</b> se hicieron <b data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</b> llamadas salientes: se conectaron <b data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</b> (<b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b>) y <b data-draw="n" data-source="kpi_s" data-field="efectivas" data-row="0">—</b> fueron contactos efectivos.</p>
+  </header>
+
+  <div class="filtros" id="filtros" role="group" aria-label="Filtros">
+    <div class="ctl" id="ctl-fecha">
+      <span>Día o rango</span>
+      <button type="button" class="btn fecha" id="btn-fecha" aria-haspopup="dialog" aria-expanded="false"><span data-draw="fecha_label">—</span> ▾</button>
+      <div class="pop" id="pop-fecha" role="dialog" aria-label="Elegir fechas" hidden>
+        <div class="cal" data-draw="cal" data-source="llamadas"></div>
+        <div class="presets">
+          <button type="button" data-preset="hoy">Hoy</button>
+          <button type="button" data-preset="ayer">Ayer</button>
+          <button type="button" data-preset="semana">Esta semana</button>
+          <button type="button" data-preset="semana_pasada">La semana pasada</button>
+          <button type="button" data-preset="mes">Este mes</button>
+          <button type="button" data-preset="mes_pasado">El mes pasado</button>
+          <button type="button" data-preset="todo">Todo el periodo</button>
+        </div>
+        <p class="info">Elige un día, o dos días para marcar un rango.</p>
+      </div>
+    </div>
+    <div class="ctl ms" id="ctl-semanas">
+      <span>Semanas</span>
+      <button type="button" class="btn ms-btn" aria-haspopup="listbox" aria-expanded="false"><span data-draw="ms_label" data-param="semanas">—</span> ▾</button>
+      <div class="pop ms-pop" hidden>
+        <div class="ms-list" data-param="semanas" data-draw="ms_semanas" data-source="llamadas" role="group" aria-label="Semanas"></div>
+        <div class="ms-acc"><span>Puedes marcar varias</span><button type="button" data-ms-limpiar="semanas">Quitar selección</button></div>
+      </div>
+    </div>
+    <div class="ctl ms" id="ctl-nucleos">
+      <span>Núcleos</span>
+      <button type="button" class="btn ms-btn" aria-haspopup="listbox" aria-expanded="false"><span data-draw="ms_label" data-param="nucleos">—</span> ▾</button>
+      <div class="pop ms-pop" hidden>
+        <div class="ms-list" data-param="nucleos" data-draw="ms_nucleos" data-source="llamadas" role="group" aria-label="Núcleos"></div>
+        <div class="ms-acc"><span>Puedes marcar varios</span><button type="button" data-ms-limpiar="nucleos">Quitar selección</button></div>
+      </div>
+    </div>
+    <div class="ctl ms" id="ctl-equipos">
+      <span>Equipos</span>
+      <button type="button" class="btn ms-btn" aria-haspopup="listbox" aria-expanded="false"><span data-draw="ms_label" data-param="equipos">—</span> ▾</button>
+      <div class="pop ms-pop" hidden>
+        <div class="ms-list" data-param="equipos" id="lista-equipos" role="group" aria-label="Equipos">
+          <label class="op"><input type="checkbox" value="Posgrados"> Posgrados</label>
+          <label class="op"><input type="checkbox" value="Pregrados"> Pregrados</label>
+        </div>
+        <div class="ms-acc"><span>Puedes marcar los dos</span><button type="button" data-ms-limpiar="equipos">Quitar selección</button></div>
+      </div>
+    </div>
+    <div class="ctl ms" id="ctl-asesoras">
+      <span>Asesoras</span>
+      <button type="button" class="btn ms-btn" aria-haspopup="listbox" aria-expanded="false"><span data-draw="ms_label" data-param="asesoras">—</span> ▾</button>
+      <div class="pop ms-pop" hidden>
+        <div class="ms-list" data-param="asesoras" data-draw="ms_asesoras" data-source="llamadas" role="group" aria-label="Asesoras"></div>
+        <div class="ms-acc"><span>Marca varias para comparar</span><button type="button" data-ms-limpiar="asesoras">Quitar selección</button></div>
+      </div>
+    </div>
+    <button type="button" class="btn link" id="btn-limpiar">Limpiar filtros</button>
+  </div>
+  <p class="activos">Mostrando: <span data-draw="activos">—</span>.</p>
+
+  <div class="tabs" role="tablist" aria-label="Secciones">
+    <button type="button" role="tab" data-tab="salientes" aria-selected="true">Salientes</button>
+    <button type="button" role="tab" data-tab="no-conectadas" aria-selected="false">No conectadas</button>
+    <button type="button" role="tab" data-tab="entrantes" aria-selected="false">Entrantes</button>
+    <button type="button" role="tab" data-tab="por-hora" aria-selected="false">Por hora</button>
+    <button type="button" role="tab" data-tab="rellamadas" aria-selected="false">Rellamadas</button>
+  </div>
+
+  <!-- SALIENTES -->
+  <section class="tab" id="salientes" role="tabpanel" aria-label="Salientes">
+    <div class="cards">
+      <div class="card"><span class="k">Llamadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</span><span class="s">Salientes del periodo</span></div>
+      <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b> de las llamadas</span></div>
+      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_s" data-field="efectivas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_efec" data-row="0">—</b> de las conectadas</span></div>
+    </div>
+
+    <div class="duo">
+      <div id="g-diario">
+        <h3>Llamadas por día</h3>
+        <div class="chart" data-draw="ch_diario" data-source="diario_s" role="img" aria-label="Llamadas y efectivas por día">—</div>
+      </div>
+      <div id="g-tasas">
+        <h3>Conexión y efectividad por día</h3>
+        <div class="chart" data-draw="ch_tasas" data-source="diario_s" role="img" aria-label="Porcentaje de conectadas y de efectivas por día">—</div>
+      </div>
+    </div>
+
+    <div id="equipos">
+      <h2>Por equipo</h2>
+      <div class="tw">
+        <table data-source="equipos_s" data-row-key="equipo">
+          <thead><tr>
+            <th data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_equipos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="asesoras">
+      <h2>Por asesora</h2>
+      <p class="say">Conectadas de cada asesora; la parte oscura son las efectivas.</p>
+      <div class="chart" data-draw="ch_asesoras" data-source="asesoras_s" role="img" aria-label="Conectadas y efectivas por asesora">—</div>
+      <div class="tw" style="margin-top:var(--cds-gap-lg)">
+        <table data-source="asesoras_s" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora</th>
+            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_asesoras"></tbody>
+        </table>
+      </div>
+      <p class="cap">Haz clic en el nombre de una columna para ordenar de mayor a menor; otro clic la ordena de menor a mayor.</p>
+    </div>
+  </section>
+
+  <!-- NO CONECTADAS -->
+  <section class="tab" id="no-conectadas" role="tabpanel" aria-label="No conectadas" hidden>
+    <div class="cards">
+      <div class="card"><span class="k">No conectadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="no_conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_no" data-row="0">—</b> de las salientes</span></div>
+      <div class="card"><span class="k">Llamadas salientes</span><span class="v" data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</span><span class="s">Del periodo filtrado</span></div>
+    </div>
+    <div id="g-tipificacion">
+      <h2>Qué etiqueta les pusieron</h2>
+      <p class="say">Tipificación del agente en las llamadas que no se conectaron.</p>
+      <div class="chart" data-draw="ch_nc" data-source="nc_tip" role="img" aria-label="No conectadas por tipificación">—</div>
+      <p class="cap">"Solo Local Presence" son llamadas sin tipificación del agente: solo traen la etiqueta automática de Aircall.</p>
+    </div>
+    <div id="nc-asesoras">
+      <h2>Por asesora</h2>
+      <div class="tw">
+        <table data-source="nc_asesora" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora</th>
+            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="no_conectadas" aria-sort="none" tabindex="0">No conectadas</th>
+            <th data-field="pct_no" aria-sort="none" tabindex="0">% no conectadas</th>
+            <th data-field="sin_contestar" aria-sort="none" tabindex="0">Sin contestar</th>
+            <th data-field="no_disponible" aria-sort="none" tabindex="0">Teléfono no disponible</th>
+            <th data-field="buzon" aria-sort="none" tabindex="0">Buzón</th>
+            <th data-field="solo_lp" aria-sort="none" tabindex="0">Solo Local Presence</th>
+            <th data-field="otras" aria-sort="none" tabindex="0">Otras</th>
+          </tr></thead>
+          <tbody data-draw="t_nc"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENTRANTES -->
+  <section class="tab" id="entrantes" role="tabpanel" aria-label="Entrantes" hidden>
+    <div class="cards">
+      <div class="card"><span class="k">Entrantes</span><span class="v" data-draw="n" data-source="kpi_e" data-field="llamadas" data-row="0">—</span><span class="s">Llamadas que entraron</span></div>
+      <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_e" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_e" data-field="pct_conect" data-row="0">—</b> de las entrantes</span></div>
+      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_e" data-field="efectivas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_e" data-field="pct_efec" data-row="0">—</b> de las conectadas</span></div>
+    </div>
+    <div id="e-asesoras">
+      <h2>Por asesora</h2>
+      <div class="chart" data-draw="ch_entrantes" data-source="asesoras_e" role="img" aria-label="Entrantes conectadas y efectivas por asesora">—</div>
+      <div class="tw" style="margin-top:var(--cds-gap-lg)">
+        <table data-source="asesoras_e" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora</th>
+            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Entrantes</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_entrantes"></tbody>
+        </table>
+      </div>
+      <p class="cap">Solo incluye las entrantes que trae la exportación de Aircall.</p>
+    </div>
+  </section>
+
+  <!-- POR HORA -->
+  <section class="tab" id="por-hora" role="tabpanel" aria-label="Por hora" hidden>
+    <p class="say">Entre las horas con al menos el 5 % de las llamadas, la mejor conexión fue a las <b data-draw="tx" data-source="mejor_hora" data-field="hora" data-row="0">—</b>, con <b data-draw="p" data-source="mejor_hora" data-field="pct_conect" data-row="0">—</b> de las llamadas conectadas.</p>
+    <div class="duo">
+      <div id="g-hora-cont">
+        <h3>% de conectadas por hora</h3>
+        <div class="chart" data-draw="ch_hora_cont" data-source="horas_s" role="img" aria-label="Porcentaje de conectadas por hora">—</div>
+        <p class="cap">Bajo cada hora, el número de llamadas hechas.</p>
+      </div>
+      <div id="g-hora-efec">
+        <h3>Efectivas por hora</h3>
+        <div class="chart" data-draw="ch_hora_efec" data-source="horas_s" role="img" aria-label="Llamadas efectivas por hora">—</div>
+      </div>
+    </div>
+    <div class="tw" id="t-horas-wrap">
+      <table data-source="horas_s" data-row-key="hora">
+        <thead><tr>
+          <th data-field="hora" aria-sort="none" tabindex="0">Hora</th>
+          <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+          <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+          <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+          <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+          <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+        </tr></thead>
+        <tbody data-draw="t_horas"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RELLAMADAS -->
+  <section class="tab" id="rellamadas" role="tabpanel" aria-label="Rellamadas" hidden>
+    <div class="cards">
+      <div class="card"><span class="k">Primeros intentos</span><span class="v" data-draw="n" data-source="kpi_s" data-field="primeros" data-row="0">—</span><span class="s">Primera llamada a un número</span></div>
+      <div class="card"><span class="k">Rellamadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="rellamadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_rellamadas" data-row="0">—</b> de las salientes</span></div>
+    </div>
+    <div class="duo">
+      <div id="g-intento-cont">
+        <h3>% de conectadas por intento</h3>
+        <div class="chart" data-draw="ch_intentos" data-source="intentos_s" role="img" aria-label="Porcentaje de conectadas por intento al mismo número">—</div>
+        <p class="cap">Bajo cada intento, el número de llamadas.</p>
+      </div>
+      <div id="g-intento-primer">
+        <h3>Primer contacto logrado por intento</h3>
+        <div class="chart" data-draw="ch_primer" data-source="intentos_s" role="img" aria-label="Primer contacto logrado en cada intento">—</div>
+        <p class="cap">Llamadas conectadas a números que no se habían conectado antes.</p>
+      </div>
+    </div>
+    <div class="tw">
+      <table data-source="intentos_s" data-row-key="intento">
+        <thead><tr>
+          <th data-field="intento" aria-sort="none" tabindex="0">Intento al número</th>
+          <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+          <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+          <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+          <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+          <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+          <th data-field="primer_contacto" aria-sort="none" tabindex="0">Primer contacto logrado</th>
+        </tr></thead>
+        <tbody data-draw="t_intentos"></tbody>
+      </table>
+    </div>
+    <p class="cap">El intento se cuenta por número de cliente desde el 13 de octubre. Con un filtro de fechas, una llamada puede ser 3.er intento aunque los dos anteriores queden fuera del filtro.</p>
+  </section>
+
+  <details id="definiciones">
+    <summary>Cómo se clasifica cada llamada</summary>
+    <p><b>Conectada:</b> Aircall registró la llamada como contestada (answered = Yes). Incluye buzón, mensajes de la operadora y llamadas cortadas.</p>
+    <p><b>Efectiva:</b> conectada, con etiqueta "Contactado" y al menos 30 segundos de conversación. No cuentan "Contactado no puede hablar" ni "Contactado Mensaje con familiar/conocido".</p>
+    <p><b>Porcentajes:</b> % conectadas = conectadas / llamadas. % efectivas = efectivas / conectadas.</p>
+    <p><b>Semanas:</b> de lunes a domingo; la semana 1 empieza el 12 de octubre. <b>Núcleos:</b> periodos de dos meses; el núcleo 1 va del 12 de octubre al 11 de diciembre.</p>
+    <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados.</p>
+  </details>
+
+  <p class="foot">Datos: exportación de Aircall del 13 de octubre al 24 de noviembre de 2026 (el 24 de noviembre llega hasta las 8:24 a. m.).</p>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="datos.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
