@@ -42,7 +42,7 @@ Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `a
 - **Efectiva:** conectada y con cualquier etiqueta que diga "Contactado" (incluye "no puede hablar" y "Mensaje con familiar/conocido"), sin importar la duración.
 - **% conectadas** = conectadas / llamadas. **% efectivas** = efectivas / conectadas.
 - **Semanas:** de lunes a domingo; la semana 1 empieza el 12 de octubre de 2026. **Núcleos:** periodos de dos meses desde el 12 de octubre.
-- **Equipos:** Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados. Bleidys Torres (coordinadora) no se incluye: está en la lista `EXCLUIR` de `actualizar_datos.py`.
+- **Equipos:** Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados. Bleidys Torres y Karina Hernandez no se incluyen: están en la lista `EXCLUIR` de `actualizar_datos.py`.
 
 ## Probarlo en tu computador
 
