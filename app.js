@@ -855,7 +855,7 @@ dash.draw('ch_mapa', el => {
   });
 });
 /* ---------- Rendimiento por asesora ---------- */
-const COLORES_EVO = ['#46668a', '#c0803c', '#4f8a7f', '#b0506a', '#7a62a8', '#6f9a43', '#c9a227', '#4c7fc0', '#8a5a44', '#3f8fa8'];
+const COLORES_EVO = ['#1f6fd1', '#f08a00', '#1f9e3a', '#d7263d', '#c2289e', '#00a3b4', '#8c564b', '#6a3fc1', '#8a9a00', '#ff5c8a'];
 const MEDIDAS_EVO = [{k: 'llamadas', n: 'llamadas', dash: null}, {k: 'conectadas', n: 'conectadas', dash: '7 4'}, {k: 'efectivas', n: 'efectivas', dash: '1.5 4'}];
 const evoMetricas = new Set(['llamadas']);
 let evoIniciado = false;
@@ -870,7 +870,7 @@ function redibujarEvo() { dash.draw('evo_sel'); dash.draw('ch_evol'); }
 function agrupaPorSemana() { const p = dash.params(); return lista(p.semanas).length > 1 || (!lista(p.semanas).length && !p.desde && !p.hasta); }
 document.querySelectorAll('#seg-evo-metrica button').forEach(b => b.addEventListener('click', () => {
   const k = b.dataset.m;
-  if (evoMetricas.has(k)) { if (evoMetricas.size > 1) evoMetricas.delete(k); } else evoMetricas.add(k);
+  if (evoMetricas.has(k)) evoMetricas.delete(k); else evoMetricas.add(k);
   document.querySelectorAll('#seg-evo-metrica button').forEach(x => x.setAttribute('aria-pressed', evoMetricas.has(x.dataset.m) ? 'true' : 'false'));
   dash.draw('ch_evol');
 }));
@@ -927,6 +927,7 @@ dash.draw('ch_evol', el => {
   const prom = periodos.map(p => { const vs = todasEvo.filter(([a]) => evoAsesoras.has(a)).map(([a]) => suma.get(a + '|' + p)).filter(v => v && v.llamadas > 0); const n = vs.length || 1;
     return {llamadas: d3.sum(vs, v => v.llamadas) / n, conectadas: d3.sum(vs, v => v.conectadas) / n, efectivas: d3.sum(vs, v => v.efectivas) / n, n: vs.length}; });
   const asesoras = todasEvo.filter(([a]) => evoAsesoras.has(a)).map(([a]) => ({nombre: a, color: colorAsesora(a), vals: periodos.map(p => suma.get(a + '|' + p) || cero)}));
+  if (!medidas.length) { const d = document.createElement('div'); d.className = 'vacio'; d.textContent = 'Marca al menos una medida en Medir.'; el.appendChild(d); return; }
   if (!asesoras.length) { const d = document.createElement('div'); d.className = 'vacio'; d.textContent = 'Marca al menos una asesora en el selector.'; el.appendChild(d); return; }
   if (!periodos.length) { const d = document.createElement('div'); d.className = 'vacio'; d.textContent = 'No hay llamadas en esas fechas.'; el.appendChild(d); return; }
   const w = Math.max(el.clientWidth, 280), h = 340;
@@ -953,8 +954,8 @@ dash.draw('ch_evol', el => {
   }));
   const etqProm = [];
   if (verProm) medidas.slice().reverse().forEach(md => {
-    const COL = '#3d3a35';
-    if (periodos.length > 1) { const pth = svg.append('path').attr('d', d3.line().x((v, i) => x(String(periodos[i]))).y(v => y(v[md.k]))(prom)).style('fill', 'none').style('stroke', COL).style('stroke-width', 3.2).style('stroke-opacity', 0.85).style('stroke-linecap', 'round'); if (md.dash) pth.style('stroke-dasharray', md.dash); }
+    const COL = '#000';
+    if (periodos.length > 1) { const pth = svg.append('path').attr('d', d3.line().x((v, i) => x(String(periodos[i]))).y(v => y(v[md.k]))(prom)).style('fill', 'none').style('stroke', COL).style('stroke-width', 3.2).style('stroke-linecap', 'round'); if (md.dash) pth.style('stroke-dasharray', md.dash); }
     prom.forEach((v, i) => svg.append('circle').attr('cx', x(String(periodos[i]))).attr('cy', y(v[md.k])).attr('r', periodos.length === 1 ? 5 : 3).style('fill', '#fff').style('stroke', COL).style('stroke-width', 2));
     const ult = prom[prom.length - 1];
     let ly = y(ult[md.k]) - 9; while (etqProm.some(v => Math.abs(v - ly) < 14)) ly -= 14; etqProm.push(ly);
