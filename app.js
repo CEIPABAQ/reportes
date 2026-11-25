@@ -289,6 +289,18 @@ function textDraw(name, fmt) {
     if (el.hasAttribute('data-accent')) el.style.color = PAL.accTxt;
   });
 }
+dash.draw('periodo', el => {
+  const g = dash.data('kpi_s'); const r = g.status === 'ok' && g.data[0];
+  if (!r || !r.desde) { el.textContent = 'En el periodo elegido'; return; }
+  el.textContent = r.desde === r.hasta ? `El ${fLargo(r.desde)}` : `Entre el ${fLargo(r.desde)} y el ${fLargo(r.hasta)}`;
+});
+dash.draw('rango_datos', el => {
+  const g = dash.data('llamadas');
+  if (g.status !== 'ok' || !g.data.length) { el.textContent = '—'; return; }
+  let a = null, b = null; for (const r of g.data) { if (!a || r.fecha < a) a = r.fecha; if (!b || r.fecha > b) b = r.fecha; }
+  const y = b.slice(0, 4);
+  el.textContent = a === b ? `del ${fLargo(a)} de ${y}` : `del ${fLargo(a)} al ${fLargo(b)} de ${y}`;
+});
 textDraw('n', n0); textDraw('p', pc); textDraw('tx', v => String(v)); textDraw('dt', fLargo);
 
 /* ---------- Filtros ---------- */

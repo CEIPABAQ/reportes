@@ -16,7 +16,7 @@
   <header id="inicio">
     <p class="eyebrow">Admisiones · Aircall</p>
     <h1>Panel de llamadas Aircall</h1>
-    <p class="lead">Entre el <b data-draw="dt" data-source="kpi_s" data-field="desde" data-row="0">—</b> y el <b data-draw="dt" data-source="kpi_s" data-field="hasta" data-row="0">—</b> se hicieron <b data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</b> llamadas salientes: se conectaron <b data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</b> (<b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b>) y <b data-draw="n" data-source="kpi_s" data-field="efectivas" data-row="0">—</b> fueron contactos efectivos.</p>
+    <p class="lead"><span data-draw="periodo" data-source="kpi_s">—</span> se hicieron <b data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</b> llamadas salientes: se conectaron <b data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</b> (<b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b>) y <b data-draw="n" data-source="kpi_s" data-field="efectivas" data-row="0">—</b> fueron contactos efectivos.</p>
   </header>
 
   <div class="filtros" id="filtros" role="group" aria-label="Filtros">
@@ -325,7 +325,7 @@
         <tbody data-draw="t_intentos"></tbody>
       </table>
     </div>
-    <p class="cap">El intento se cuenta por número de cliente desde el 13 de octubre. Con un filtro de fechas, una llamada puede ser 3.er intento aunque los dos anteriores queden fuera del filtro.</p>
+    <p class="cap">El intento se cuenta por número de cliente desde el primer día de los datos cargados. Con un filtro de fechas, una llamada puede ser 3.er intento aunque los dos anteriores queden fuera del filtro.</p>
   </section>
 
   <!-- SEMANA A SEMANA -->
@@ -427,7 +427,7 @@
     <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados.</p>
   </details>
 
-  <p class="foot">Datos: exportación de Aircall del 13 de octubre al 24 de noviembre de 2026 (el 24 de noviembre llega hasta las 8:24 a. m.).</p>
+  <p class="foot">Datos: exportación de Aircall <span data-draw="rango_datos" data-source="llamadas">—</span>.</p>
 </div>
 </div>
 
