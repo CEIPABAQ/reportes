@@ -48,6 +48,8 @@
 /* ---------- Formatos ---------- */
 const nf = new Intl.NumberFormat('es-CO');
 const n0 = v => (v == null || !isFinite(v)) ? '—' : nf.format(v);
+const nf1 = new Intl.NumberFormat('es-CO', {maximumFractionDigits: 1});
+const n1 = v => (v == null || !isFinite(v)) ? '—' : nf1.format(v);
 const pc = v => (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(1).replace('.', ',') + ' %';
 const pc0 = v => (v == null || !isFinite(v)) ? '—' : Math.round(v * 100) + ' %';
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -163,6 +165,24 @@ dash.calc('franja_asesoras', {
 });
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const diaDe = f => (utc(f).getUTCDay() + 6) % 7;
+dash.calc('evol_s', {
+  inputs: ['llamadas'], title: 'Salientes por día y asesora',
+  description: 'Llamadas, conectadas y efectivas de cada asesora por día, con los filtros de fecha, semanas y núcleos; las asesoras se eligen dentro de la pestaña Rendimiento.',
+  fn: (llamadas) => {
+    const p = dash.params(); const sem = lista(p.semanas).map(Number), nuc = lista(p.nucleos).map(Number);
+    const m = new Map();
+    for (const r of llamadas) {
+      if (r.direccion !== 'Saliente') continue;
+      if ((p.desde && r.fecha < p.desde) || (p.hasta && r.fecha > p.hasta)) continue;
+      if (sem.length && !sem.includes(semanaDe(r.fecha))) continue;
+      if (nuc.length && !nuc.includes(nucleoDe(r.fecha))) continue;
+      const k = r.fecha + '|' + r.asesora;
+      if (!m.has(k)) m.set(k, {fecha: r.fecha, asesora: r.asesora, equipo: r.equipo, llamadas: 0, conectadas: 0, efectivas: 0});
+      const o = m.get(k); o.llamadas += r.llamadas; if (r.clase !== 'No contestada') o.conectadas += r.llamadas; if (r.clase === 'Efectiva') o.efectivas += r.llamadas;
+    }
+    return [...m.values()].sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.asesora.localeCompare(b.asesora, 'es'));
+  }
+});
 dash.calc('mapa_s', {
   inputs: ['filtro'], title: 'Salientes por día de la semana y hora', description: 'Indicadores de salientes para cada combinación de día de la semana y hora.',
   fn: (filtro) => {
@@ -400,7 +420,7 @@ document.querySelectorAll('.pa .ctl').forEach(ctl => {
   btn.addEventListener('click', ev => {
     ev.stopPropagation();
     const abrir = pop.hidden; pop.hidden = !abrir; cerrarTodo(abrir ? pop : null);
-    if (abrir && pop.id === 'pop-fecha') { calVista = null; dash.draw('cal'); }
+    if (abrir && pop.querySelector('.cal')) { calVista = null; dash.draw('cal'); }
   });
   pop.addEventListener('click', ev => ev.stopPropagation());
 });
@@ -464,7 +484,7 @@ dash.draw('cal', el => {
 });
 
 /* ---------- Pestañas ---------- */
-const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana'];
+const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana', 'evolucion'];
 let tabActual = TABS.includes((location.hash || '').slice(1)) ? location.hash.slice(1) : 'salientes';
 function mostrar(id) {
   tabActual = id;
@@ -495,7 +515,6 @@ document.querySelectorAll('.pa table').forEach(tabla => {
     th.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ordenar(); } });
   });
 });
-const nf1 = new Intl.NumberFormat('es-CO', {maximumFractionDigits: 1});
 // Cada pestaña tiene su propia casilla: solo apaga o enciende el resaltado de esa pestaña
 document.querySelectorAll('[data-resalte]').forEach(cb => cb.addEventListener('change', () => {
   const sec = cb.closest('section.tab'); if (sec) sec.classList.toggle('sin-resalte', !cb.checked);
@@ -834,6 +853,119 @@ dash.draw('ch_mapa', el => {
       if (r) rect.on('mousemove', ev => tip.show([`${DIAS[d]} · ${r.hora}`, `${n0(r.llamadas)} llamadas`, `${n0(r.conectadas)} conectadas (${pc(r.pct_conect)})`, `${n0(r.efectivas)} efectivas (${pc(r.pct_efec)} de conectadas)`, `Efectividad total: ${pc(r.efec_llamadas)}`], ev)).on('mouseleave', () => tip.hide());
     });
   });
+});
+/* ---------- Rendimiento por asesora ---------- */
+const COLORES_EVO = ['#46668a', '#c0803c', '#4f8a7f', '#b0506a', '#7a62a8', '#6f9a43', '#c9a227', '#4c7fc0', '#8a5a44', '#3f8fa8'];
+const MEDIDAS_EVO = [{k: 'llamadas', n: 'llamadas', dash: null}, {k: 'conectadas', n: 'conectadas', dash: '7 4'}, {k: 'efectivas', n: 'efectivas', dash: '1.5 4'}];
+const evoMetricas = new Set(['llamadas']);
+let evoIniciado = false;
+const evoAsesoras = new Set();
+function asesorasEvo() {
+  const g = dash.data('llamadas'); const m = new Map();
+  if (g.status === 'ok') for (const r of g.data) if (r.direccion === 'Saliente') m.set(r.asesora, r.equipo);
+  return [...m].sort((a, b) => a[0].localeCompare(b[0], 'es'));
+}
+function colorAsesora(nombre) { const i = asesorasEvo().findIndex(([a]) => a === nombre); return COLORES_EVO[(i < 0 ? 0 : i) % COLORES_EVO.length]; }
+function redibujarEvo() { dash.draw('evo_sel'); dash.draw('ch_evol'); }
+function agrupaPorSemana() { const p = dash.params(); return lista(p.semanas).length > 1 || (!lista(p.semanas).length && !p.desde && !p.hasta); }
+document.querySelectorAll('#seg-evo-metrica button').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.m;
+  if (evoMetricas.has(k)) { if (evoMetricas.size > 1) evoMetricas.delete(k); } else evoMetricas.add(k);
+  document.querySelectorAll('#seg-evo-metrica button').forEach(x => x.setAttribute('aria-pressed', evoMetricas.has(x.dataset.m) ? 'true' : 'false'));
+  dash.draw('ch_evol');
+}));
+dash.draw('evo_periodo', el => {
+  const p = dash.params(); const sem = lista(p.semanas).map(Number).sort((a, b) => a - b);
+  let t = sem.length ? (sem.length === 1 ? `semana ${sem[0]} (${fCorto(inicioSemana(sem[0]))} – ${fCorto(addDays(inicioSemana(sem[0]), 6))})` : `semanas ${sem.join(', ')}`) : (p.desde || p.hasta ? etiquetaFecha(p) : 'todo el periodo');
+  el.textContent = t + (agrupaPorSemana() ? ' · un punto por semana' : ' · un punto por día');
+});
+dash.draw('evo_sel', el => {
+  el.replaceChildren();
+  const todas = asesorasEvo();
+  if (!todas.length) { el.textContent = '—'; return; }
+  if (!evoIniciado) { todas.forEach(([a]) => evoAsesoras.add(a)); evoIniciado = true; }
+  const nota = document.createElement('p'); nota.className = 'evo-nota'; nota.textContent = 'Marca una o varias asesoras. El nombre del equipo marca o quita todo el grupo.';
+  el.appendChild(nota);
+  ['Posgrados', 'Pregrados'].forEach(eq => {
+    const del = todas.filter(([, e]) => e === eq).map(([a]) => a); if (!del.length) return;
+    const g = document.createElement('div'); g.className = 'evo-grupo';
+    const marcadas = del.filter(a => evoAsesoras.has(a)).length;
+    const cab = document.createElement('button'); cab.type = 'button'; cab.className = 'evo-equipo';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.tabIndex = -1; cb.checked = marcadas === del.length; cb.indeterminate = marcadas > 0 && marcadas < del.length;
+    cab.append(cb, document.createTextNode(eq));
+    cab.setAttribute('aria-pressed', marcadas === del.length ? 'true' : 'false');
+    cab.onclick = () => { if (marcadas === del.length) del.forEach(a => evoAsesoras.delete(a)); else del.forEach(a => evoAsesoras.add(a)); redibujarEvo(); };
+    g.appendChild(cab);
+    del.forEach(a => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'evo-op'; const on = evoAsesoras.has(a); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const c = document.createElement('input'); c.type = 'checkbox'; c.tabIndex = -1; c.checked = on;
+      const i = document.createElement('i'); if (on) i.style.borderTopColor = colorAsesora(a);
+      b.append(c, i, document.createTextNode(a)); b.onclick = () => { on ? evoAsesoras.delete(a) : evoAsesoras.add(a); redibujarEvo(); };
+      g.appendChild(b);
+    });
+    el.appendChild(g);
+  });
+  const acc = document.createElement('div'); acc.className = 'evo-acciones';
+  const t = document.createElement('button'); t.type = 'button'; t.className = 'evo-limpiar'; t.textContent = 'Marcar todas'; t.onclick = () => { todas.forEach(([a]) => evoAsesoras.add(a)); redibujarEvo(); };
+  const n = document.createElement('button'); n.type = 'button'; n.className = 'evo-limpiar'; n.textContent = 'Quitar todas'; n.onclick = () => { evoAsesoras.clear(); redibujarEvo(); };
+  acc.append(t, n); el.appendChild(acc);
+});
+dash.draw('ch_evol', el => {
+  const rows = filasDe('evol_s', el); if (!rows) return;
+  el.replaceChildren();
+  const medidas = MEDIDAS_EVO.filter(m => evoMetricas.has(m.k));
+  const periodo = agrupaPorSemana() ? 'semana' : 'dia';
+  const clave = r => periodo === 'semana' ? semanaDe(r.fecha) : r.fecha;
+  const periodos = [...new Set(rows.map(clave))].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  const etiqueta = p => periodo === 'semana' ? `S${p}` : fCorto(p);
+  const detalle = p => periodo === 'semana' ? `Semana ${p} (${fCorto(inicioSemana(p))} – ${fCorto(addDays(inicioSemana(p), 6))})` : fLargo(p);
+  const suma = new Map();
+  for (const r of rows) { const c = r.asesora + '|' + clave(r); if (!suma.has(c)) suma.set(c, {llamadas: 0, conectadas: 0, efectivas: 0}); const o = suma.get(c); o.llamadas += r.llamadas; o.conectadas += r.conectadas; o.efectivas += r.efectivas; }
+  const cero = {llamadas: 0, conectadas: 0, efectivas: 0};
+  const todasEvo = asesorasEvo();
+  const verProm = evoAsesoras.size > 0 && evoAsesoras.size < todasEvo.length;
+  const prom = periodos.map(p => { const vs = todasEvo.filter(([a]) => evoAsesoras.has(a)).map(([a]) => suma.get(a + '|' + p)).filter(v => v && v.llamadas > 0); const n = vs.length || 1;
+    return {llamadas: d3.sum(vs, v => v.llamadas) / n, conectadas: d3.sum(vs, v => v.conectadas) / n, efectivas: d3.sum(vs, v => v.efectivas) / n, n: vs.length}; });
+  const asesoras = todasEvo.filter(([a]) => evoAsesoras.has(a)).map(([a]) => ({nombre: a, color: colorAsesora(a), vals: periodos.map(p => suma.get(a + '|' + p) || cero)}));
+  if (!asesoras.length) { const d = document.createElement('div'); d.className = 'vacio'; d.textContent = 'Marca al menos una asesora en el selector.'; el.appendChild(d); return; }
+  if (!periodos.length) { const d = document.createElement('div'); d.className = 'vacio'; d.textContent = 'No hay llamadas en esas fechas.'; el.appendChild(d); return; }
+  const w = Math.max(el.clientWidth, 280), h = 340;
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).style('display', 'block').attr('role', 'img').attr('aria-label', `Rendimiento por asesora: ${medidas.map(m => m.n).join(', ')}`);
+  const maxV = d3.max([...asesoras.flatMap(s => s.vals), ...(verProm ? prom : [])].flatMap(v => medidas.map(m => v[m.k]))) || 0;
+  const y = d3.scaleLinear().domain([0, Math.max(4, maxV * 1.08)]).nice(5);
+  const ticks = y.ticks(5).filter(Number.isInteger);
+  const m = {t: 14, r: 16, b: 30, l: medirTexto(svg, n0(ticks[ticks.length - 1]), 11) + 14};
+  y.range([h - m.b, m.t]);
+  const x = d3.scalePoint().domain(periodos.map(String)).range([m.l + 10, w - m.r - 10]).padding(periodos.length === 1 ? 0.5 : 0);
+  ejeY(svg, y, ticks, n0, m, w);
+  const paso = Math.max(1, Math.ceil(periodos.length / Math.max(1, Math.floor((w - m.l - m.r) / 56))));
+  periodos.forEach((p, i) => { if (i % paso) return; svg.append('text').attr('x', x(String(p))).attr('y', h - m.b + 18).attr('text-anchor', 'middle').style('fill', 'var(--cds-text-secondary)').style('font-size', '11px').text(etiqueta(p)); });
+  const r0 = periodos.length > 20 ? 2.2 : (periodos.length === 1 ? 5 : 3.4);
+  medidas.forEach(md => asesoras.forEach(s => {
+    const linea = d3.line().x((v, i) => x(String(periodos[i]))).y(v => y(v[md.k]));
+    if (periodos.length > 1) { const pth = svg.append('path').attr('d', linea(s.vals)).style('fill', 'none').style('stroke', s.color).style('stroke-width', md.k === 'efectivas' ? 2.6 : 2.2).style('stroke-linejoin', 'round').style('stroke-linecap', 'round'); if (md.dash) pth.style('stroke-dasharray', md.dash); }
+    s.vals.forEach((v, i) => {
+      const cx = x(String(periodos[i])), cy = y(v[md.k]);
+      if (md.k === 'llamadas') svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', r0).style('fill', s.color);
+      else if (md.k === 'conectadas') svg.append('rect').attr('x', cx - r0).attr('y', cy - r0).attr('width', r0 * 2).attr('height', r0 * 2).style('fill', s.color);
+      else svg.append('path').attr('d', d3.symbol(d3.symbolTriangle, r0 * r0 * 4.2)()).attr('transform', `translate(${cx},${cy})`).style('fill', s.color);
+    });
+  }));
+  const etqProm = [];
+  if (verProm) medidas.slice().reverse().forEach(md => {
+    const COL = '#3d3a35';
+    if (periodos.length > 1) { const pth = svg.append('path').attr('d', d3.line().x((v, i) => x(String(periodos[i]))).y(v => y(v[md.k]))(prom)).style('fill', 'none').style('stroke', COL).style('stroke-width', 3.2).style('stroke-opacity', 0.85).style('stroke-linecap', 'round'); if (md.dash) pth.style('stroke-dasharray', md.dash); }
+    prom.forEach((v, i) => svg.append('circle').attr('cx', x(String(periodos[i]))).attr('cy', y(v[md.k])).attr('r', periodos.length === 1 ? 5 : 3).style('fill', '#fff').style('stroke', COL).style('stroke-width', 2));
+    const ult = prom[prom.length - 1];
+    let ly = y(ult[md.k]) - 9; while (etqProm.some(v => Math.abs(v - ly) < 14)) ly -= 14; etqProm.push(ly);
+    svg.append('text').attr('x', x(String(periodos[periodos.length - 1])) - 6).attr('y', ly).attr('text-anchor', 'end').style('fill', COL).style('font-size', '11px').style('font-weight', '600').style('paint-order', 'stroke').style('stroke', 'var(--color-bg)').style('stroke-width', 3).text(medidas.length > 1 ? `Promedio ${md.n}` : 'Promedio');
+  });
+  if (periodos.length <= 3 && medidas.length === 1 && asesoras.length <= 4) asesoras.forEach(s => s.vals.forEach((v, i) => svg.append('text').attr('x', x(String(periodos[i])) + 9).attr('y', y(v[medidas[0].k])).attr('dy', '0.35em').style('fill', s.color).style('font-size', '11px').style('font-weight', '600').style('font-variant-numeric', 'tabular-nums').text(n0(v[medidas[0].k]))));
+  const tip = mkTip(el);
+  const ancho = periodos.length > 1 ? x.step() : (w - m.l - m.r);
+  const orden = medidas[0].k;
+  periodos.forEach((p, i) => svg.append('rect').attr('x', x(String(p)) - ancho / 2).attr('y', m.t).attr('width', ancho).attr('height', h - m.b - m.t).style('fill', 'transparent')
+    .on('mousemove', ev => tip.show([detalle(p), ...asesoras.slice().sort((a, b) => b.vals[i][orden] - a.vals[i][orden]).map(s => `${s.nombre}: ${medidas.map(md => `${n0(s.vals[i][md.k])} ${md.n}`).join(' · ')}`), ...(verProm ? [`Promedio (${prom[i].n} asesoras): ${medidas.map(md => `${n1(prom[i][md.k])} ${md.n}`).join(' · ')}`] : [])], ev)).on('mouseleave', () => tip.hide()));
 });
 dash.draw('ch_intentos', el => {
   const rows = filasDe('intentos_s', el); if (!rows) return;

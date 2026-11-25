@@ -84,6 +84,7 @@
     <button type="button" role="tab" data-tab="mapa-calor" aria-selected="false">Mapa de calor</button>
     <button type="button" role="tab" data-tab="rellamadas" aria-selected="false">Rellamadas</button>
     <button type="button" role="tab" data-tab="semana-a-semana" aria-selected="false">Semana a semana</button>
+    <button type="button" role="tab" data-tab="evolucion" aria-selected="false">Rendimiento</button>
   </div>
 
   <!-- SALIENTES -->
@@ -416,6 +417,51 @@
     </div>
   </section>
 
+  <!-- RENDIMIENTO -->
+  <section class="tab" id="evolucion" role="tabpanel" aria-label="Rendimiento" hidden>
+    <p class="say">Compara el rendimiento de las asesoras en el tiempo. Elige el día, el rango o las semanas, una o varias medidas y las asesoras que quieras ver.</p>
+    <div class="filtros evo-filtros" role="group" aria-label="Fechas de la gráfica">
+      <div class="ctl" id="ctl-evo-fecha">
+        <span>Día o rango</span>
+        <button type="button" class="btn fecha" aria-haspopup="dialog" aria-expanded="false"><span data-draw="fecha_label">—</span> ▾</button>
+        <div class="pop" id="pop-evo-fecha" role="dialog" aria-label="Elegir fechas" hidden>
+          <div class="cal" data-draw="cal" data-source="llamadas"></div>
+          <div class="presets">
+            <button type="button" data-preset="hoy">Hoy</button>
+            <button type="button" data-preset="ayer">Ayer</button>
+            <button type="button" data-preset="semana">Esta semana</button>
+            <button type="button" data-preset="semana_pasada">La semana pasada</button>
+            <button type="button" data-preset="mes">Este mes</button>
+            <button type="button" data-preset="mes_pasado">El mes pasado</button>
+            <button type="button" data-preset="todo">Todo el periodo</button>
+          </div>
+          <p class="info">Elige un día, o dos días para marcar un rango.</p>
+        </div>
+      </div>
+      <div class="ctl ms" id="ctl-evo-semanas">
+        <span>Semanas</span>
+        <button type="button" class="btn ms-btn" aria-haspopup="listbox" aria-expanded="false"><span data-draw="ms_label" data-param="semanas">—</span> ▾</button>
+        <div class="pop ms-pop" hidden>
+          <div class="ms-list" data-param="semanas" data-draw="ms_semanas" data-source="llamadas" role="group" aria-label="Semanas"></div>
+          <div class="ms-acc"><span>Puedes marcar varias</span><button type="button" data-ms-limpiar="semanas">Quitar selección</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="seg-fila"><span>Medir (una o varias)</span><div class="seg" id="seg-evo-metrica" role="group" aria-label="Medidas">
+      <button type="button" data-m="llamadas" aria-pressed="true"><i class="estilo llamadas"></i>Llamadas totales</button>
+      <button type="button" data-m="conectadas" aria-pressed="false"><i class="estilo conectadas"></i>Conectadas</button>
+      <button type="button" data-m="efectivas" aria-pressed="false"><i class="estilo efectivas"></i>Efectivas</button>
+    </div></div>
+    <div class="evo-cuerpo">
+      <div class="evo-sel" id="evo-selector" data-draw="evo_sel" data-source="evol_s" role="group" aria-label="Asesoras de la gráfica"></div>
+      <div class="evo-graf" id="g-evolucion">
+        <p class="activos" style="margin-bottom:var(--cds-gap-sm)">Periodo: <span data-draw="evo_periodo">—</span></p>
+        <div class="chart" data-draw="ch_evol" data-source="evol_s" role="img" aria-label="Rendimiento por asesora">—</div>
+        <p class="cap">El color es la asesora y el trazo es la medida: línea continua para llamadas, de guiones para conectadas y de puntos para efectivas. La línea gris oscura es el promedio de las asesoras que tienes marcadas (solo las que hicieron llamadas en ese día o semana); aparece cuando eliges un equipo o algunas asesoras. Pasa el cursor por un punto para ver las cifras.</p>
+      </div>
+    </div>
+  </section>
+
   <details id="definiciones">
     <summary>Cómo se clasifica cada llamada</summary>
     <p><b>Conectada:</b> Aircall registró la llamada como contestada (answered = Yes). Incluye buzón, mensajes de la operadora y llamadas cortadas.</p>
@@ -424,7 +470,7 @@
     <p><b>Entrantes:</b> toda llamada entrante conectada cuenta como efectiva.</p>
     <p><b>Semanas:</b> de lunes a domingo; la semana 1 empieza el 12 de octubre. <b>Núcleos:</b> periodos de dos meses; el núcleo 1 va del 12 de octubre al 11 de diciembre.</p>
     <p><b>Tablas:</b> la última fila es el promedio simple de las filas que se ven con los filtros aplicados; las cifras por debajo de ese promedio se marcan en rosa; el resaltado se puede apagar con la casilla de cada pestaña, y cada pestaña se maneja por separado.</p>
-    <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados. Bleidys Torres no se incluye porque es coordinadora.</p>
+    <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados.</p>
   </details>
 
   <p class="foot">Datos: exportación de Aircall <span data-draw="rango_datos" data-source="llamadas">—</span>.</p>

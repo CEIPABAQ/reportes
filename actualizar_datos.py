@@ -18,7 +18,7 @@ import json, sys, os
 import pandas as pd
 
 POSGRADOS = {'Lina Beleno', 'Ana Isabel Zambrano Avendano'}
-EXCLUIR = {'Bleidys Torres'}  # coordinadora: no entra en los reportes
+EXCLUIR = {'Bleidys Torres', 'Karina Hernandez'}  # no entran en los reportes
 
 
 def leer(paths):
