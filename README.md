@@ -25,11 +25,11 @@ Importante: con GitHub Pages gratuito, la página es pública para cualquiera qu
 ## Actualizar los datos
 
 1. Descarga desde Aircall el historial de llamadas en Excel.
-2. En tu computador, con Python instalado:
+2. En tu computador, con Python instalado, pasa todos los Excel del núcleo (el grande y los diarios). El script los une y quita las llamadas repetidas:
 
    ```
    pip install pandas openpyxl
-   python actualizar_datos.py "dashboard-call_history-AAAAMMDD.xlsx"
+   python actualizar_datos.py exportacion_grande.xlsx dia_24.xlsx dia_25.xlsx
    ```
 
 3. Se genera un `datos.js` nuevo en la carpeta. Súbelo a GitHub reemplazando el anterior. La página se actualiza sola en un par de minutos.
@@ -42,7 +42,7 @@ Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `a
 - **Efectiva:** conectada y con cualquier etiqueta que diga "Contactado" (incluye "no puede hablar" y "Mensaje con familiar/conocido"), sin importar la duración.
 - **% conectadas** = conectadas / llamadas. **% efectivas** = efectivas / conectadas.
 - **Semanas:** de lunes a domingo; la semana 1 empieza el 12 de octubre de 2026. **Núcleos:** periodos de dos meses desde el 12 de octubre.
-- **Equipos:** Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados.
+- **Equipos:** Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados. Bleidys Torres (coordinadora) no se incluye: está en la lista `EXCLUIR` de `actualizar_datos.py`.
 
 ## Probarlo en tu computador
 
