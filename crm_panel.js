@@ -8,10 +8,16 @@ function crmCargar() {
   const de = (arr, i) => i < 0 ? null : arr[i];
   crmFilas = C.filas.map(r => ({fecha: r[0], asesora: A[r[1]] ? A[r[1]].nombre : '—', equipo: A[r[1]] ? A[r[1]].equipo : '—', clase: r[2], num: r[3],
     pipeline: de(C.pipelines, r[4]), etapa: de(C.etapas, r[5]), canal: de(C.canales, r[6]), activador: de(C.activadores, r[7]),
-    dueno: de(C.duenos, r[8]), propia: r[9], tramo: r[10], llamadas: r[11]}));
+    dueno: de(C.duenos, r[8]), propia: r[9], tramo: r[10], actividad: de(C.actividades || [], r[11]), llamadas: r[12]}));
   return crmFilas;
 }
+// Pipelines que se muestran en la pestaña; las llamadas a leads de otros pipelines solo se cuentan aparte
+const PIPELINES_CRM = ['Pregrado Barranquilla', 'Especializaciones'];
 dash.calc('crm_filtro', {
+  inputs: ['crm_todas'], title: 'Llamadas a leads de los pipelines elegidos o que no están en el CRM',
+  fn: (t) => t.filter(r => r.pipeline == null || PIPELINES_CRM.includes(r.pipeline))
+});
+dash.calc('crm_todas', {
   inputs: [], title: 'Llamadas salientes cruzadas con el CRM, con los filtros aplicados',
   fn: () => {
     const p = dash.params();
@@ -41,11 +47,13 @@ function crmPor(rows, key) {
   return [...agrupar(rows, key)].map(([k, rs]) => ({[key]: k, ...medirCrm(rs)})).sort((a, b) => b.llamadas - a.llamadas);
 }
 dash.calc('crm_kpi', {
-  inputs: ['crm_filtro'], title: 'Indicadores del cruce con el CRM',
-  fn: (f) => {
-    const t = medirCrm(f), c = enCrm(f), mc = medirCrm(c), no = medirCrm(f.filter(r => r.pipeline == null));
+  inputs: ['crm_filtro', 'crm_todas'], title: 'Indicadores del cruce con el CRM',
+  fn: (f, todas) => {
+    const t = medirCrm(todas), c = enCrm(f), mc = medirCrm(c), no = medirCrm(f.filter(r => r.pipeline == null));
+    const otros = medirCrm(todas.filter(r => r.pipeline != null && !PIPELINES_CRM.includes(r.pipeline)));
     const conAct = new Set(c.filter(r => r.activador !== '(sin activador)').map(r => r.num)).size;
     return [{llamadas: t.llamadas, en_crm: mc.llamadas, pct_en_crm: t.llamadas ? mc.llamadas / t.llamadas : null,
+      llamadas_otros: otros.llamadas, numeros_otros: otros.numeros,
       numeros: t.numeros, numeros_crm: mc.numeros, numeros_no: no.numeros, llamadas_no: no.llamadas, conectadas_no: no.conectadas,
       propias: mc.propias, ajenas: mc.ajenas, sin_dueno: mc.sin_dueno, pct_propias: mc.pct_propias,
       numeros_activador: conAct, pct_activador: mc.numeros ? conAct / mc.numeros : null}];
@@ -70,11 +78,28 @@ dash.calc('crm_propia', {
   }).sort((a, b) => b.en_crm - a.en_crm)
 });
 dash.calc('crm_ajenas', {
-  inputs: ['crm_filtro'], title: 'Llamadas a leads de otra persona',
+  inputs: ['crm_filtro'], title: 'Resumen por asesora de las llamadas a leads de otra persona',
+  fn: f => [...agrupar(f.filter(r => r.propia === 0), 'asesora')].map(([a, rs]) => ({asesora: a, equipo: rs[0].equipo,
+    duenas: new Set(rs.map(r => r.dueno)).size, ...medirCrm(rs)})).sort((a, b) => b.numeros - a.numeros)
+});
+dash.calc('crm_act_actividad', {
+  inputs: ['crm_filtro'], title: 'Activador y actividad de ingreso de los leads',
   fn: f => {
+    // Los cursos y webinars con nombre propio se agrupan en "Evento"; las actividades con menos de 5 leads, en "Otras"
+    const tipo = a => a && a.startsWith('Evento: ') ? 'Evento (cursos, webinars)' : a;
+    const c = enCrm(f).filter(r => r.activador !== '(sin activador)');
+    const totalAct = new Map([...agrupar(c, 'activador')].map(([a, rs]) => [a, new Set(rs.map(r => r.num)).size]));
     const m = new Map();
-    for (const r of f) if (r.propia === 0) { const k = r.asesora + '|' + r.dueno; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
-    return [...m.values()].map(rs => ({asesora: rs[0].asesora, dueno: rs[0].dueno, ...medirCrm(rs)})).sort((a, b) => b.llamadas - a.llamadas);
+    for (const r of c) { const k = r.activador + '|' + tipo(r.actividad); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+    const filas = [], otras = new Map();
+    for (const rs of m.values()) {
+      const fila = {activador: rs[0].activador, actividad: tipo(rs[0].actividad), ...medirCrm(rs)};
+      if (fila.numeros >= 5) filas.push(fila);
+      else { if (!otras.has(fila.activador)) otras.set(fila.activador, []); otras.get(fila.activador).push(...rs); }
+    }
+    for (const [a, rs] of otras) filas.push({activador: a, actividad: 'Otras', ...medirCrm(rs)});
+    return filas.sort((a, b) => (totalAct.get(b.activador) - totalAct.get(a.activador)) || a.activador.localeCompare(b.activador, 'es') ||
+      (a.actividad === 'Otras') - (b.actividad === 'Otras') || b.numeros - a.numeros);
   }
 });
 dash.calc('crm_velocidad', {
@@ -98,7 +123,8 @@ dash.draw('t_crm_pipelines', tb => cuerpo(tb, 'crm_pipelines', [['pipeline', S],
 dash.draw('t_crm_etapas', tb => cuerpo(tb, 'crm_etapas', [['etapa', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
 dash.draw('t_crm_activadores', tb => cuerpo(tb, 'crm_activadores', [['activador', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_propias', pc]]));
 dash.draw('t_crm_propia', tb => cuerpo(tb, 'crm_propia', [['asesora', S], ['equipo', S, 'eq'], ['en_crm', n0], ['propias', n0], ['ajenas', n0], ['sin_dueno', n0], ['pct_propias', pc]]));
-dash.draw('t_crm_ajenas', tb => cuerpo(tb, 'crm_ajenas', [['asesora', S], ['dueno', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0]]));
+dash.draw('t_crm_ajenas', tb => cuerpo(tb, 'crm_ajenas', [['asesora', S], ['equipo', S, 'eq'], ['numeros', n0], ['llamadas', n0], ['duenas', n0], ['conectadas', n0], ['efectivas', n0]]));
+dash.draw('t_crm_act_actividad', tb => cuerpo(tb, 'crm_act_actividad', [['activador', S], ['actividad', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0]]));
 dash.draw('t_crm_velocidad', tb => cuerpo(tb, 'crm_velocidad', [['tramo', S], ['leads', n0], ['pct_leads', pc], ['pct_conect', pc], ['pct_efec_total', pc]]));
 dash.draw('t_crm_canal_rinde', tb => cuerpo(tb, 'crm_canal_rinde', [['canal', S], ['numeros', n0], ['por_lead', n1], ['pct_conect', pc], ['pct_leads_efec', pc]]));
 
@@ -128,6 +154,10 @@ dash.draw('crm_sync', el => {
   if (!C) { el.textContent = 'Todavía no hay cruce con el CRM: corre actualizar_datos.py en el computador con acceso al CRM.'; return; }
   const [f, h] = C.sincronizado.split(' ');
   el.textContent = `Cruce actualizado el ${fLargo(f)} a las ${h}.`;
+});
+dash.draw('crm_otros', el => {
+  const g = dash.data('crm_kpi'); const k = g.status === 'ok' && g.data[0];
+  el.textContent = k && k.llamadas_otros ? `${n0(k.llamadas_otros)} llamadas (${n0(k.numeros_otros)} números) fueron a leads de otros pipelines y no se muestran.` : '';
 });
 dash.draw('crm_no_texto', el => {
   const g = dash.data('crm_kpi'); const k = g.status === 'ok' && g.data[0];

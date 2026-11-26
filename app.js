@@ -504,7 +504,7 @@ document.querySelectorAll('.pa table').forEach(tabla => {
   const nombre = tb.dataset.draw;
   tabla.querySelectorAll('th[aria-sort]').forEach(th => {
     const ordenar = () => {
-      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas', 'pipeline', 'canal', 'etapa', 'activador', 'dueno', 'tramo'].includes(k);
+      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas', 'pipeline', 'canal', 'etapa', 'activador', 'dueno', 'tramo', 'actividad'].includes(k);
       const actual = orden[nombre];
       const dir = actual && actual.k === k ? (actual.dir === 'desc' ? 'asc' : 'desc') : (texto ? 'asc' : 'desc');
       orden[nombre] = {k, dir};

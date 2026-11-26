@@ -119,6 +119,8 @@ SQL_DETALLE = '''SELECT d.hs_object_id AS id, p.PipelineLabel AS pipeline, s.Sta
        CAST(LEFT(d.canal__n_, 100) AS nvarchar(100)) AS canal,
        CAST(LEFT(d.activador__n_, 100) AS nvarchar(100)) AS activador,
        CAST(LEFT(d.tipo_de_programa__n_, 100) AS nvarchar(100)) AS tipo_programa,
+       CAST(LEFT(d.origen_del_lead__n_, 100) AS nvarchar(100)) AS origen,
+       CAST(LEFT(d.evento__n_, 150) AS nvarchar(150)) AS evento,
        LTRIM(RTRIM(CONCAT(o.FirstName, ' ', o.LastName))) AS propietario,
        d.createdate
 FROM dbo.Deal AS d
@@ -143,10 +145,12 @@ WHERE numero_de_telefono_movil__n_ IS NOT NULL AND _archived = 0;
 ''', 'indice', max_filas=2000000)
         indice = pd.DataFrame({'id': q['id'], 'hash': q['tel'].map(cifrar)})
         indice = indice[indice.hash != '']
-        detalle = pd.DataFrame(columns=['id', 'pipeline', 'etapa', 'canal', 'activador', 'tipo_programa', 'propietario', 'createdate'])
+        detalle = pd.DataFrame(columns=['id', 'pipeline', 'etapa', 'canal', 'activador', 'tipo_programa', 'origen', 'evento', 'propietario', 'createdate'])
     else:
         indice = pd.read_csv(INDICE, dtype=str)
         detalle = pd.read_csv(DETALLE, dtype=str) if os.path.exists(DETALLE) else pd.DataFrame(columns=['id'])
+        if 'origen' not in detalle.columns:  # detalle de una versión anterior: se vuelve a traer completo
+            detalle = pd.DataFrame(columns=['id'])
         desde = pd.Timestamp(estado['sincronizado_utc']) - pd.Timedelta(hours=6)  # margen por la copia nocturna
         q = consultar(f'''SELECT hs_object_id AS id, CAST(LEFT(numero_de_telefono_movil__n_, 30) AS varchar(30)) AS tel,
        CAST(_archived AS int) AS borrado
@@ -207,6 +211,9 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
     det['activador'] = _limpio(det.activador, '(sin activador)')
     det['tipo_programa'] = _limpio(det.tipo_programa, '(sin tipo)')
     det['propietario'] = _limpio(det.propietario, '(sin propietario)')
+    # Actividad de ingreso: el origen del lead (Stand, Charla presencial, Ferias...); si no tiene, el nombre del evento
+    origen, evento = _limpio(det.origen, ''), _limpio(det.evento, '')
+    det['actividad'] = origen.where(origen != '', ('Evento: ' + evento).where(evento != '', '(sin actividad)'))
     det['creado'] = pd.to_datetime(det.createdate, errors='coerce') - pd.Timedelta(hours=5)  # UTC -> Colombia
     det['activo'] = ~det.pipeline.str.startswith('Archivo')
     neg = indice.merge(det, on='id')
@@ -215,7 +222,7 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
 
     ll = llamadas[['t', 'f', 'user', 'c', 'customer number']].rename(columns={'customer number': 'hash'}).copy()
     ll = ll.sort_values('t').reset_index(drop=True)
-    ll = ll.merge(neg[['hash', 'pipeline', 'etapa', 'canal', 'activador', 'tipo_programa', 'propietario', 'creado']], on='hash', how='left')
+    ll = ll.merge(neg[['hash', 'pipeline', 'etapa', 'canal', 'activador', 'actividad', 'propietario', 'creado']], on='hash', how='left')
     ll['en_crm'] = ll.pipeline.notna()
 
     # Propietaria: el nombre de HubSpot se muestra como en Aircall cuando es la misma asesora
@@ -254,12 +261,12 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
         dims[col] = orden
         m = {v: k for k, v in enumerate(orden)}
         return ll[col].map(m).fillna(vacio).astype(int)
-    for col in ['pipeline', 'etapa', 'canal', 'activador', 'dueno']:
+    for col in ['pipeline', 'etapa', 'canal', 'activador', 'dueno', 'actividad']:
         ll[col + '_i'] = cod(col)
     ai = {a: k for k, a in enumerate(asesoras)}
     ll['ai'] = ll.user.map(ai)
     ll['ci'] = ll.c.map({'no': 0, 'auto': 1, 'efec': 2})
-    cols = ['f', 'ai', 'ci', 'num', 'pipeline_i', 'etapa_i', 'canal_i', 'activador_i', 'dueno_i', 'propia', 'tramo']
+    cols = ['f', 'ai', 'ci', 'num', 'pipeline_i', 'etapa_i', 'canal_i', 'activador_i', 'dueno_i', 'propia', 'tramo', 'actividad_i']
     g = ll.groupby(cols).size().reset_index(name='n')
 
     local = sincronizado - pd.Timedelta(hours=5)
@@ -267,7 +274,7 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
         'sincronizado': local.strftime('%Y-%m-%d %H:%M'),
         'columnas': cols + ['llamadas'],
         'pipelines': dims['pipeline'], 'etapas': dims['etapa'], 'canales': dims['canal'],
-        'activadores': dims['activador'], 'duenos': dims['dueno'],
+        'activadores': dims['activador'], 'duenos': dims['dueno'], 'actividades': dims['actividad'],
         'tramos': TRAMOS, 'cargas_masivas': sorted(str(d) for d in masivos if pd.Timestamp(d) >= INICIO_BASE),
         'filas': g.values.tolist(),
     }

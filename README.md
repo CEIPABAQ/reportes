@@ -56,6 +56,8 @@ Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `a
 ## Pestaña CRM
 
 - **Cruce:** el número de cada llamada saliente se busca en el celular de los negocios de HubSpot, normalizado a solo dígitos con indicativo, así que coinciden `+57 300 123 4567`, `3001234567`, `573001234567` y otras variantes. Si un número tiene varios negocios, se toma uno de pipeline activo y, entre ellos, el más reciente.
+- **Pipelines:** la pestaña solo muestra Pregrado Barranquilla y Especializaciones (lista `PIPELINES_CRM` en `crm_panel.js`); las llamadas a leads de otros pipelines se cuentan aparte en una nota.
+- **Actividad de ingreso:** la propiedad *Origen del lead (n)* (Stand, Charla presencial, Ferias, Webinars…); si está vacía y el lead tiene un curso o webinar en *Evento (n)*, cuenta como "Evento".
 - **Estado actual:** pipeline, etapa, canal, activador y propietaria son los de hoy en HubSpot, no los del día de la llamada.
 - **A sus leads:** la asesora que llamó en Aircall es la propietaria del negocio en HubSpot. Los nombres se comparan sin tildes y aceptando palabras de más; las excepciones van en `ALIAS` de `crm_sync.py`.
 - **Velocidad al primer contacto:** solo leads creados desde el 13 de octubre, sin llamadas antes de existir en HubSpot y sin las cargas masivas (más de 300 leads llamados creados el mismo día, como el cambio de periodo del 16 de octubre).
