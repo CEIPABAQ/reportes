@@ -5,28 +5,55 @@ Uso:
     pip install pandas openpyxl
     python actualizar_datos.py exportacion_grande.xlsx dia_24.xlsx dia_25.xlsx ...
 
-Une todos los archivos, quita las llamadas repetidas (mismo "call id") y genera
-datos.js en la misma carpeta. Luego sube ese archivo a GitHub.
-Para el informe del núcleo, pasa siempre todos los Excel del núcleo: el grande y los diarios.
+Une los archivos nuevos al historial acumulado (historial_llamadas.csv.gz, local y fuera
+de GitHub), quita las llamadas repetidas (mismo "call id") y genera datos.js en la misma
+carpeta. Luego sube datos.js a GitHub.
+Cada día basta con pasar el Excel nuevo: lo anterior ya está en el historial. Si el historial
+se pierde, vuelve a pasar todos los Excel de una vez y se reconstruye.
 
 Reglas: conectada = answered Yes; efectiva = conectada con cualquier etiqueta que diga
 "Contactado" (incluye "no puede hablar" y "familiar"), sin importar la duración.
 Posgrados: Lina Beleno y Ana Isabel Zambrano Avendano; el resto, Pregrados.
 No se incluye a quien esté en EXCLUIR (por ejemplo, coordinadoras).
 """
-import json, sys, os
+import hashlib, json, sys, os
 import pandas as pd
 
 POSGRADOS = {'Lina Beleno', 'Ana Isabel Zambrano Avendano'}
 EXCLUIR = {'Bleidys Torres', 'Karina Hernandez'}  # no entran en los reportes
 
 
+CARPETA = os.path.dirname(os.path.abspath(__file__))
+# Historial acumulado de todas las llamadas cargadas. Es local: está en .gitignore y no se sube.
+# Guarda solo las columnas que usa el panel y el número del cliente cifrado (sha256).
+HISTORIAL = os.path.join(CARPETA, 'historial_llamadas.csv.gz')
+COLUMNAS = ['call id (internal)', 'call start time', 'answered', 'tags', 'direction', 'user', 'customer number']
+
+
+def cifrar(numero):
+    if pd.isna(numero):
+        return ''
+    return hashlib.sha256(str(numero).strip().encode('utf-8')).hexdigest()[:20]
+
+
+def leer_excel(path):
+    df = pd.read_excel(path, dtype={'customer number': str})[COLUMNAS].copy()
+    df['customer number'] = df['customer number'].map(cifrar)
+    df['call id (internal)'] = df['call id (internal)'].astype(str)
+    df['call start time'] = pd.to_datetime(df['call start time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    return df
+
+
 def leer(paths):
-    partes = [pd.read_excel(p) for p in paths]
+    partes = []
+    if os.path.exists(HISTORIAL):
+        partes.append(pd.read_csv(HISTORIAL, dtype=str, keep_default_na=False).replace({'': None}))
+    partes += [leer_excel(p) for p in paths]
     df = pd.concat(partes, ignore_index=True)
     antes = len(df)
-    df = df.drop_duplicates(subset='call id (internal)', keep='last')
+    df = df.drop_duplicates(subset='call id (internal)', keep='last').reset_index(drop=True)
     repetidas = antes - len(df)
+    df.to_csv(HISTORIAL, index=False, compression='gzip')
     excluidas = int(df.user.isin(EXCLUIR).sum())
     df = df[~df.user.isin(EXCLUIR)].copy()
     return df, repetidas, excluidas

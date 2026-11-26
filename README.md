@@ -24,15 +24,17 @@ Importante: con GitHub Pages gratuito, la página es pública para cualquiera qu
 
 ## Actualizar los datos
 
-1. Descarga desde Aircall el historial de llamadas en Excel.
-2. En tu computador, con Python instalado, pasa todos los Excel del núcleo (el grande y los diarios). El script los une y quita las llamadas repetidas:
+1. Descarga desde Aircall el historial de llamadas del día en Excel y déjalo en la carpeta del proyecto.
+2. En tu computador, con Python instalado, pasa solo el Excel nuevo. El script lo suma al historial acumulado (`historial_llamadas.csv.gz`) y quita las llamadas repetidas, así que cargar dos veces el mismo archivo no duplica nada:
 
    ```
    pip install pandas openpyxl
-   python actualizar_datos.py exportacion_grande.xlsx dia_24.xlsx dia_25.xlsx
+   python actualizar_datos.py dia_26.xlsx
    ```
 
-3. Se genera un `datos.js` nuevo en la carpeta. Súbelo a GitHub reemplazando el anterior. La página se actualiza sola en un par de minutos.
+3. Se genera un `datos.js` nuevo con todo el historial. Súbelo a GitHub reemplazando el anterior. La página se actualiza sola en un par de minutos.
+
+El historial queda solo en tu computador: guarda las columnas que usa el panel y los números de clientes cifrados, y está en `.gitignore` junto con los Excel, que no se suben a GitHub. Haz copia de `historial_llamadas.csv.gz`; si se pierde, vuelve a pasar todos los Excel juntos y se reconstruye.
 
 Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `actualizar_datos.py` y también en el texto "Equipos" al final de `index.html`.
 
