@@ -82,26 +82,101 @@ dash.calc('crm_ajenas', {
   fn: f => [...agrupar(f.filter(r => r.propia === 0), 'asesora')].map(([a, rs]) => ({asesora: a, equipo: rs[0].equipo,
     duenas: new Set(rs.map(r => r.dueno)).size, ...medirCrm(rs)})).sort((a, b) => b.numeros - a.numeros)
 });
-dash.calc('crm_act_actividad', {
-  inputs: ['crm_filtro'], title: 'Activador y actividad de ingreso de los leads',
+dash.calc('crm_activador_grupos', {
+  inputs: ['crm_filtro'], title: 'Activador con el detalle de la actividad de ingreso de sus leads',
   fn: f => {
     // Los cursos y webinars con nombre propio se agrupan en "Evento"; las actividades con menos de 5 leads, en "Otras"
-    const tipo = a => a && a.startsWith('Evento: ') ? 'Evento (cursos, webinars)' : a;
-    const c = enCrm(f).filter(r => r.activador !== '(sin activador)');
-    const totalAct = new Map([...agrupar(c, 'activador')].map(([a, rs]) => [a, new Set(rs.map(r => r.num)).size]));
-    const m = new Map();
-    for (const r of c) { const k = r.activador + '|' + tipo(r.actividad); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
-    const filas = [], otras = new Map();
-    for (const rs of m.values()) {
-      const fila = {activador: rs[0].activador, actividad: tipo(rs[0].actividad), ...medirCrm(rs)};
-      if (fila.numeros >= 5) filas.push(fila);
-      else { if (!otras.has(fila.activador)) otras.set(fila.activador, []); otras.get(fila.activador).push(...rs); }
-    }
-    for (const [a, rs] of otras) filas.push({activador: a, actividad: 'Otras', ...medirCrm(rs)});
-    return filas.sort((a, b) => (totalAct.get(b.activador) - totalAct.get(a.activador)) || a.activador.localeCompare(b.activador, 'es') ||
-      (a.actividad === 'Otras') - (b.actividad === 'Otras') || b.numeros - a.numeros);
+    const tipo = a => a && a.startsWith('Evento: ') ? 'Evento (cursos, webinars)' : (a || '(sin actividad)');
+    return [...agrupar(enCrm(f), 'activador')].map(([act, rs]) => {
+      const hijos = [], otras = [];
+      for (const [actividad, hs] of agrupar(rs.map(r => Object.assign({}, r, {act_tipo: tipo(r.actividad)})), 'act_tipo')) {
+        const m = medirCrm(hs);
+        if (m.numeros >= 5) hijos.push({actividad, ...m}); else otras.push(...hs);
+      }
+      hijos.sort((a, b) => b.numeros - a.numeros);
+      if (otras.length) hijos.push({actividad: 'Otras', ...medirCrm(otras)});
+      return {activador: act, ...medirCrm(rs), hijos};
+    }).sort((a, b) => b.numeros - a.numeros);
   }
 });
+
+/* Tabla agrupada: una fila por grupo con su total y un botón para ver el detalle.
+   Respeta el orden por columna y la fila de promedio de las demás tablas. */
+const abiertos = {};
+function cuerpoGrupos(tb, id, cols, hijoKey, limite) {
+  const g = dash.data(id); const nombre = tb.dataset.draw;
+  tb.replaceChildren();
+  if (g.status !== 'ok') return;
+  abiertos[nombre] = abiertos[nombre] || new Set();
+  const abierto = abiertos[nombre];
+  let filas = g.data.slice();
+  const o = orden[nombre];
+  if (o) filas.sort((a, b) => {
+    const x = a[o.k], y = b[o.k];
+    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+    const c = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'es', {numeric: true});
+    return o.dir === 'desc' ? -c : c;
+  });
+  const tabla = tb.closest('table');
+  const etiquetas = [...tabla.querySelectorAll('thead th')].map(th => th.textContent.trim());
+  const prom = cols.map(([k]) => { const vs = filas.map(r => r[k]).filter(v => typeof v === 'number' && isFinite(v)); return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null; });
+  const conProm = filas.length > 1;
+  const verTodo = abierto.has('__todas__');
+  const visibles = limite && !verTodo ? filas.slice(0, limite) : filas;
+  const celda = (tr, i, texto, cls) => { const td = document.createElement('td'); if (etiquetas[i]) td.dataset.label = etiquetas[i]; if (cls) td.className = cls; td.appendChild(texto); tr.appendChild(td); return td; };
+  const span = t => { const s = document.createElement('span'); s.className = 'num'; s.textContent = t; return s; };
+  visibles.forEach(r => {
+    const clave = r[cols[0][0]], hijos = r[hijoKey] || [], exp = abierto.has(clave);
+    const tr = document.createElement('tr'); tr.className = 'grupo';
+    cols.forEach(([k, f], i) => {
+      if (i === 0) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'expandir';
+        b.setAttribute('aria-expanded', exp ? 'true' : 'false');
+        b.textContent = `${exp ? '▾' : '▸'} ${r[k]}`;
+        const n = document.createElement('small'); n.textContent = ` ${hijos.length} ${hijos.length === 1 ? 'actividad' : 'actividades'}`; b.appendChild(n);
+        b.onclick = () => { exp ? abierto.delete(clave) : abierto.add(clave); dash.draw(nombre); };
+        celda(tr, i, b);
+      } else {
+        const td = celda(tr, i, span(r[k] == null ? '—' : f(r[k])));
+        if (conProm && typeof r[k] === 'number' && prom[i] != null && r[k] < prom[i] - 1e-9) td.classList.add('bajo');
+      }
+    });
+    tb.appendChild(tr);
+    if (exp) hijos.forEach(h => {
+      const th = document.createElement('tr'); th.className = 'hijo';
+      cols.forEach(([k, f], i) => celda(th, i, document.createTextNode(i === 0 ? h.actividad : (h[k] == null ? '—' : f(h[k])))));
+      tb.appendChild(th);
+    });
+  });
+  if (limite && filas.length > limite) {
+    const tr = document.createElement('tr'); tr.className = 'mas';
+    const td = document.createElement('td'); td.colSpan = cols.length;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ver-mas';
+    b.textContent = verTodo ? 'Ver menos' : `Ver los ${filas.length - limite} restantes`;
+    b.onclick = () => { verTodo ? abierto.delete('__todas__') : abierto.add('__todas__'); dash.draw(nombre); };
+    td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);
+  }
+  if (conProm) {
+    const tr = document.createElement('tr'); tr.className = 'prom';
+    cols.forEach(([k, f], i) => celda(tr, i, document.createTextNode(i === 0 ? 'Promedio' : prom[i] == null ? '' : (f === n0 ? nf1.format(prom[i]) : f(prom[i])))));
+    tb.appendChild(tr);
+  }
+}
+/* Tablas largas sin grupos: muestra las primeras filas y un botón para ver el resto */
+function recortar(tb, limite) {
+  const nombre = tb.dataset.draw; abiertos[nombre] = abiertos[nombre] || new Set();
+  const filas = [...tb.querySelectorAll('tr:not(.prom)')];
+  if (filas.length <= limite) return;
+  const verTodo = abiertos[nombre].has('__todas__');
+  if (!verTodo) filas.slice(limite).forEach(tr => { tr.hidden = true; });
+  const tr = document.createElement('tr'); tr.className = 'mas';
+  const td = document.createElement('td'); td.colSpan = tb.closest('table').querySelectorAll('thead th').length;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'ver-mas';
+  b.textContent = verTodo ? 'Ver menos' : `Ver las ${filas.length - limite} restantes`;
+  b.onclick = () => { verTodo ? abiertos[nombre].delete('__todas__') : abiertos[nombre].add('__todas__'); dash.draw(nombre); };
+  td.appendChild(b); tr.appendChild(td);
+  const promTr = tb.querySelector('tr.prom'); promTr ? tb.insertBefore(tr, promTr) : tb.appendChild(tr);
+}
 dash.calc('crm_velocidad', {
   inputs: ['crm_filtro'], title: 'Tiempo hasta la primera llamada de un lead nuevo',
   fn: f => {
@@ -120,12 +195,10 @@ dash.calc('crm_canal_rinde', {
 
 /* Tablas */
 dash.draw('t_crm_pipelines', tb => cuerpo(tb, 'crm_pipelines', [['pipeline', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
-dash.draw('t_crm_etapas', tb => cuerpo(tb, 'crm_etapas', [['etapa', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
-dash.draw('t_crm_activadores', tb => cuerpo(tb, 'crm_activadores', [['activador', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_propias', pc]]));
+dash.draw('t_crm_etapas', tb => { cuerpo(tb, 'crm_etapas', [['etapa', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]); recortar(tb, 8); });
+dash.draw('t_crm_activadores', tb => cuerpoGrupos(tb, 'crm_activador_grupos', [['activador', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_propias', pc]], 'hijos', 8));
 dash.draw('t_crm_propia', tb => cuerpo(tb, 'crm_propia', [['asesora', S], ['equipo', S, 'eq'], ['en_crm', n0], ['propias', n0], ['ajenas', n0], ['sin_dueno', n0], ['pct_propias', pc]]));
-dash.draw('t_crm_ajenas', tb => cuerpo(tb, 'crm_ajenas', [['asesora', S], ['equipo', S, 'eq'], ['numeros', n0], ['llamadas', n0], ['duenas', n0], ['conectadas', n0], ['efectivas', n0]]));
-dash.draw('t_crm_act_actividad', tb => cuerpo(tb, 'crm_act_actividad', [['activador', S], ['actividad', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0]]));
-dash.draw('t_crm_velocidad', tb => cuerpo(tb, 'crm_velocidad', [['tramo', S], ['leads', n0], ['pct_leads', pc], ['pct_conect', pc], ['pct_efec_total', pc]]));
+dash.draw('t_crm_ajenas', tb => cuerpo(tb, 'crm_ajenas', [['asesora', S], ['equipo', S, 'eq'], ['numeros', n0], ['llamadas', n0], ['duenas', n0], ['conectadas', n0], ['efectivas', n0]]));dash.draw('t_crm_velocidad', tb => cuerpo(tb, 'crm_velocidad', [['tramo', S], ['leads', n0], ['pct_leads', pc], ['pct_conect', pc], ['pct_efec_total', pc]]));
 dash.draw('t_crm_canal_rinde', tb => cuerpo(tb, 'crm_canal_rinde', [['canal', S], ['numeros', n0], ['por_lead', n1], ['pct_conect', pc], ['pct_leads_efec', pc]]));
 
 /* Gráficos: las 8 categorías con más llamadas y el resto agrupado */

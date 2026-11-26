@@ -525,11 +525,11 @@
 
     <div id="crm-activador">
       <h2>¿Quién subió los leads? (activador)</h2>
-      <p class="say">La propiedad <i>Activador (n)</i> de HubSpot. Suele estar llena en los leads que se cargan a mano (Empresas, Encadenamiento, eventos); los que llegan por formulario de Internet no la tienen.</p>
+      <p class="say">La propiedad <i>Activador (n)</i> de HubSpot. Suele estar llena en los leads que se cargan a mano (Empresas, Encadenamiento, eventos); los que llegan por formulario de Internet no la tienen. Haz clic en un nombre para ver de qué actividad vinieron sus leads: la propiedad <i>Origen del lead (n)</i> (Stand, Charla presencial, Ferias, Webinars…). Si no tiene origen pero sí un curso o webinar, cuenta como "Evento"; las actividades con menos de 5 leads se suman en "Otras".</p>
       <div class="tw">
-        <table class="ancha" data-source="crm_activadores" data-row-key="activador">
+        <table class="ancha agrupada" data-source="crm_activador_grupos" data-row-key="activador">
           <thead><tr>
-            <th data-field="activador" aria-sort="none" tabindex="0">Activador</th>
+            <th data-field="activador" aria-sort="none" tabindex="0">Activador / actividad</th>
             <th data-field="numeros" aria-sort="none" tabindex="0">Leads llamados</th>
             <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
@@ -538,22 +538,6 @@
             <th data-field="pct_propias" aria-sort="none" tabindex="0">% llamadas por la dueña</th>
           </tr></thead>
           <tbody data-draw="t_crm_activadores"></tbody>
-        </table>
-      </div>
-      <h3 style="margin-top:var(--cds-gap-lg)">¿De qué actividad vinieron sus leads?</h3>
-      <p class="say">Cada activador con la actividad de ingreso de sus leads: la propiedad <i>Origen del lead (n)</i> de HubSpot (Stand, Charla presencial, Ferias, Webinars…). Si no tiene origen pero sí un curso o webinar, cuenta como "Evento". Las actividades con menos de 5 leads de un mismo activador se suman en "Otras".</p>
-      <div class="tw">
-        <table class="ancha" data-source="crm_act_actividad" data-row-key="activador">
-          <thead><tr>
-            <th data-field="activador" aria-sort="none" tabindex="0">Activador</th>
-            <th data-field="actividad" aria-sort="none" tabindex="0">Actividad de ingreso</th>
-            <th data-field="numeros" aria-sort="none" tabindex="0">Leads llamados</th>
-            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
-            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
-          </tr></thead>
-          <tbody data-draw="t_crm_act_actividad"></tbody>
         </table>
       </div>
     </div>
