@@ -3,3 +3,9 @@
 *.xls
 historial_llamadas.csv.gz
 __pycache__/
+# Cruce con el CRM: archivos locales (el panel solo usa crm.js, que es agregado)
+crm_indice.csv.gz
+crm_detalle.csv.gz
+crm_estado.json
+crm_no_encontrados.csv
+.crm_tmp/

@@ -484,7 +484,7 @@ dash.draw('cal', el => {
 });
 
 /* ---------- Pestañas ---------- */
-const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana', 'evolucion'];
+const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana', 'evolucion', 'crm'];
 let tabActual = TABS.includes((location.hash || '').slice(1)) ? location.hash.slice(1) : 'salientes';
 function mostrar(id) {
   tabActual = id;
@@ -504,7 +504,7 @@ document.querySelectorAll('.pa table').forEach(tabla => {
   const nombre = tb.dataset.draw;
   tabla.querySelectorAll('th[aria-sort]').forEach(th => {
     const ordenar = () => {
-      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas'].includes(k);
+      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas', 'pipeline', 'canal', 'etapa', 'activador', 'dueno', 'tramo'].includes(k);
       const actual = orden[nombre];
       const dir = actual && actual.k === k ? (actual.dir === 'desc' ? 'asc' : 'desc') : (texto ? 'asc' : 'desc');
       orden[nombre] = {k, dir};

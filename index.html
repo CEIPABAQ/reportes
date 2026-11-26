@@ -85,6 +85,7 @@
     <button type="button" role="tab" data-tab="rellamadas" aria-selected="false">Rellamadas</button>
     <button type="button" role="tab" data-tab="semana-a-semana" aria-selected="false">Semana a semana</button>
     <button type="button" role="tab" data-tab="evolucion" aria-selected="false">Rendimiento</button>
+    <button type="button" role="tab" data-tab="crm" aria-selected="false">CRM</button>
   </div>
 
   <!-- SALIENTES -->
@@ -462,6 +463,164 @@
     </div>
   </section>
 
+  <!-- CRM -->
+  <section class="tab" id="crm" role="tabpanel" aria-label="CRM" hidden>
+    <p class="say">Cruce de las llamadas salientes con el CRM (HubSpot). Cada número llamado se busca en el CRM con cualquier formato del teléfono, y se muestra cómo está su negocio <b>hoy</b>, aunque la llamada sea de días pasados. No se muestran teléfonos ni nombres de clientes. <span data-draw="crm_sync">—</span></p>
+    <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
+    <div class="cards">
+      <div class="card"><span class="k">Llamadas a números del CRM</span><span class="v" data-draw="p" data-accent data-source="crm_kpi" data-field="pct_en_crm" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_kpi" data-field="en_crm" data-row="0">—</b> de <b data-draw="n" data-source="crm_kpi" data-field="llamadas" data-row="0">—</b> llamadas salientes</span></div>
+      <div class="card"><span class="k">Números llamados</span><span class="v" data-draw="n" data-source="crm_kpi" data-field="numeros" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_kpi" data-field="numeros_crm" data-row="0">—</b> en el CRM · <b data-draw="n" data-source="crm_kpi" data-field="numeros_no" data-row="0">—</b> no aparecen</span></div>
+      <div class="card"><span class="k">Llamadas a leads propios</span><span class="v" data-draw="p" data-source="crm_kpi" data-field="pct_propias" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_kpi" data-field="propias" data-row="0">—</b> a sus leads · <b data-draw="n" data-source="crm_kpi" data-field="ajenas" data-row="0">—</b> a leads de otra persona · <b data-draw="n" data-source="crm_kpi" data-field="sin_dueno" data-row="0">—</b> sin propietario</span></div>
+      <div class="card"><span class="k">Leads con activador</span><span class="v" data-draw="n" data-source="crm_kpi" data-field="numeros_activador" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_kpi" data-field="pct_activador" data-row="0">—</b> de los números que están en el CRM</span></div>
+    </div>
+
+    <div class="duo">
+      <div id="g-crm-pipelines">
+        <h3>¿A qué pipelines se está llamando?</h3>
+        <div class="chart" data-draw="ch_crm_pipelines" data-source="crm_pipelines" role="img" aria-label="Llamadas por pipeline">—</div>
+      </div>
+      <div id="g-crm-canales">
+        <h3>¿De qué canal vienen los leads?</h3>
+        <div class="chart" data-draw="ch_crm_canales" data-source="crm_canales" role="img" aria-label="Llamadas por canal">—</div>
+      </div>
+    </div>
+
+    <div id="crm-pipelines">
+      <h2>Por pipeline</h2>
+      <div class="tw">
+        <table class="ancha" data-source="crm_pipelines" data-row-key="pipeline">
+          <thead><tr>
+            <th data-field="pipeline" aria-sort="none" tabindex="0">Pipeline</th>
+            <th data-field="numeros" aria-sort="none" tabindex="0">Números</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_pipelines"></tbody>
+        </table>
+      </div>
+      <p class="cap">Si un número tiene varios negocios, se toma el de un pipeline activo y, entre ellos, el más reciente. Los pipelines "Archivo" son de periodos cerrados.</p>
+    </div>
+
+    <div id="crm-etapas">
+      <h2>Etapa actual del lead</h2>
+      <p class="say">En qué etapa está hoy en HubSpot cada lead que se llamó, y cuántas de esas llamadas se conectaron.</p>
+      <div class="tw">
+        <table class="ancha" data-source="crm_etapas" data-row-key="etapa">
+          <thead><tr>
+            <th data-field="etapa" aria-sort="none" tabindex="0">Etapa en HubSpot</th>
+            <th data-field="numeros" aria-sort="none" tabindex="0">Números</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_etapas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="crm-activador">
+      <h2>¿Quién subió los leads? (activador)</h2>
+      <p class="say">La propiedad <i>Activador (n)</i> de HubSpot. Suele estar llena en los leads que se cargan a mano (Empresas, Encadenamiento, eventos); los que llegan por formulario de Internet no la tienen.</p>
+      <div class="tw">
+        <table class="ancha" data-source="crm_activadores" data-row-key="activador">
+          <thead><tr>
+            <th data-field="activador" aria-sort="none" tabindex="0">Activador</th>
+            <th data-field="numeros" aria-sort="none" tabindex="0">Leads llamados</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_propias" aria-sort="none" tabindex="0">% llamadas por la dueña</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_activadores"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="crm-propietaria">
+      <h2>¿Quién llama es la dueña del negocio en HubSpot?</h2>
+      <p class="say">Compara la asesora que hizo la llamada en Aircall con la propietaria del negocio en HubSpot. Una llamada a un lead "de otra persona" puede ser un apoyo acordado o una asignación que no se ha actualizado en HubSpot.</p>
+      <div class="tw">
+        <table class="ancha" data-source="crm_propia" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora que llama</th>
+            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
+            <th data-field="en_crm" aria-sort="none" tabindex="0">Llamadas a leads del CRM</th>
+            <th data-field="propias" aria-sort="none" tabindex="0">A sus leads</th>
+            <th data-field="ajenas" aria-sort="none" tabindex="0">A leads de otra persona</th>
+            <th data-field="sin_dueno" aria-sort="none" tabindex="0">Sin propietario</th>
+            <th data-field="pct_propias" aria-sort="none" tabindex="0">% a sus leads</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_propia"></tbody>
+        </table>
+      </div>
+      <h3 style="margin-top:var(--cds-gap-lg)">Llamadas a leads de otra persona</h3>
+      <div class="tw">
+        <table class="ancha" data-source="crm_ajenas" data-row-key="asesora">
+          <thead><tr>
+            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora que llama</th>
+            <th data-field="dueno" aria-sort="none" tabindex="0">Dueña en HubSpot</th>
+            <th data-field="numeros" aria-sort="none" tabindex="0">Leads</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
+            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_ajenas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="crm-no-encontrados">
+      <h2>Números que no aparecen en el CRM</h2>
+      <p class="say" data-draw="crm_no_texto">—</p>
+    </div>
+
+    <div id="crm-analisis">
+      <h2>Análisis sugeridos</h2>
+      <div class="duo">
+        <div>
+          <h3>1. ¿Qué tan rápido se llama a un lead nuevo?</h3>
+          <p class="say">Tiempo entre la creación del lead en HubSpot y su primera llamada, y si esa primera llamada se conectó. Solo leads nuevos: creados desde el 13 de octubre, sin llamadas antes de existir en HubSpot y sin contar las cargas masivas <span data-draw="crm_masivas"></span>.</p>
+          <div class="tw">
+            <table data-source="crm_velocidad" data-row-key="tramo">
+              <thead><tr>
+                <th data-field="tramo" aria-sort="none" tabindex="0">Primera llamada</th>
+                <th data-field="leads" aria-sort="none" tabindex="0">Leads</th>
+                <th data-field="pct_leads" aria-sort="none" tabindex="0">% de los leads</th>
+                <th data-field="pct_conect" aria-sort="none" tabindex="0">% contestó</th>
+                <th data-field="pct_efec_total" aria-sort="none" tabindex="0">% efectiva</th>
+              </tr></thead>
+              <tbody data-draw="t_crm_velocidad"></tbody>
+            </table>
+          </div>
+          <p class="nota-reco" data-draw="crm_reco_vel">—</p>
+        </div>
+        <div>
+          <h3>2. ¿Qué canal rinde más por lead?</h3>
+          <p class="say">Para cada canal: cuántas llamadas recibe cada lead y qué parte de los leads tuvo al menos un contacto efectivo en el periodo. Solo canales con 30 leads o más.</p>
+          <div class="tw">
+            <table data-source="crm_canal_rinde" data-row-key="canal">
+              <thead><tr>
+                <th data-field="canal" aria-sort="none" tabindex="0">Canal</th>
+                <th data-field="numeros" aria-sort="none" tabindex="0">Leads</th>
+                <th data-field="por_lead" aria-sort="none" tabindex="0">Llamadas por lead</th>
+                <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
+                <th data-field="pct_leads_efec" aria-sort="none" tabindex="0">% leads con contacto efectivo</th>
+              </tr></thead>
+              <tbody data-draw="t_crm_canal_rinde"></tbody>
+            </table>
+          </div>
+          <p class="nota-reco" data-draw="crm_reco_canal">—</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <details id="definiciones">
     <summary>Cómo se clasifica cada llamada</summary>
     <p><b>Conectada:</b> Aircall registró la llamada como contestada (answered = Yes). Incluye buzón, mensajes de la operadora y llamadas cortadas.</p>
@@ -470,6 +629,7 @@
     <p><b>Entrantes:</b> toda llamada entrante conectada cuenta como efectiva.</p>
     <p><b>Semanas:</b> de lunes a domingo; la semana 1 empieza el 12 de octubre. <b>Núcleos:</b> periodos de dos meses; el núcleo 1 va del 12 de octubre al 11 de diciembre.</p>
     <p><b>Tablas:</b> la última fila es el promedio simple de las filas que se ven con los filtros aplicados; las cifras por debajo de ese promedio se marcan en rosa; el resaltado se puede apagar con la casilla de cada pestaña, y cada pestaña se maneja por separado.</p>
+    <p><b>CRM:</b> cada número llamado se busca en HubSpot por el celular del negocio, sin importar cómo esté escrito (con o sin +57, espacios o guiones). Se muestra el estado actual del negocio (copia nocturna de HubSpot), no el que tenía el día de la llamada. Si un número tiene varios negocios, se toma uno de pipeline activo y el más reciente. "A sus leads" = la asesora que llamó es la propietaria del negocio en HubSpot.</p>
     <p><b>Equipos:</b> Posgrados son Lina Beleno y Ana Isabel Zambrano Avendano; el resto de asesoras son de Pregrados.</p>
   </details>
 
@@ -479,6 +639,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="datos.js"></script>
+<script src="crm.js"></script>
 <script src="app.js"></script>
+<script src="crm_panel.js"></script>
 </body>
 </html>
