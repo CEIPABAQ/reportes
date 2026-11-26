@@ -97,8 +97,8 @@ def construir(df):
 def cruzar_crm(datos, df):
     salientes = df[df.d == 's']
     try:
-        indice, detalle, cuando = crm_sync.sincronizar(set(salientes['customer number']))
-        crm_sync.construir(salientes, [a['nombre'] for a in datos['asesoras']], indice, detalle, cuando, NUMEROS_REALES)
+        indice, detalle, cuando, leads = crm_sync.sincronizar(set(salientes['customer number']))
+        crm_sync.construir(salientes, [a['nombre'] for a in datos['asesoras']], indice, detalle, cuando, leads, NUMEROS_REALES)
     except Exception as e:  # el panel de llamadas no depende del CRM
         print(f'\nAVISO: no se pudo cruzar con el CRM; crm.js queda como estaba.\n{e}')
 

@@ -121,6 +121,9 @@ SQL_DETALLE = '''SELECT d.hs_object_id AS id, p.PipelineLabel AS pipeline, s.Sta
        CAST(LEFT(d.tipo_de_programa__n_, 100) AS nvarchar(100)) AS tipo_programa,
        CAST(LEFT(d.origen_del_lead__n_, 100) AS nvarchar(100)) AS origen,
        CAST(LEFT(d.evento__n_, 150) AS nvarchar(150)) AS evento,
+       CAST(LEFT(d.programa_academico__n_, 150) AS nvarchar(150)) AS programa,
+       CAST(LEFT(d.utm_campaign_del__n_, 120) AS nvarchar(120)) AS campana,
+       d.fecha_contactado, d.fecha_cita_total, d.fecha_inscripcion, d.fecha_ne,
        LTRIM(RTRIM(CONCAT(o.FirstName, ' ', o.LastName))) AS propietario,
        d.createdate
 FROM dbo.Deal AS d
@@ -129,6 +132,25 @@ LEFT JOIN dbo.DealPipelineStage AS s ON s.PipelineId = d.pipeline AND s.DealStag
 LEFT JOIN dbo.Owner AS o ON o.hubspot_owner_id = TRY_CAST(d.hubspot_owner_id AS BIGINT)
 WHERE d.hs_object_id IN ({ids});
 '''
+
+
+PIPELINES_IDS = {'Pregrado Barranquilla': '8405051', 'Especializaciones': '8407014'}
+SQL_LEADS = '''SELECT d.hs_object_id AS id, CAST(LEFT(d.numero_de_telefono_movil__n_, 30) AS varchar(30)) AS tel,
+       p.PipelineLabel AS pipeline, s.StageLabel AS etapa,
+       CAST(LEFT(d.canal__n_, 100) AS nvarchar(100)) AS canal,
+       LTRIM(RTRIM(CONCAT(o.FirstName, ' ', o.LastName))) AS propietario,
+       d.createdate
+FROM dbo.Deal AS d
+JOIN dbo.DealPipeline AS p ON p.PipelineId = d.pipeline
+LEFT JOIN dbo.DealPipelineStage AS s ON s.PipelineId = d.pipeline AND s.DealStage = d.dealstage
+LEFT JOIN dbo.Owner AS o ON o.hubspot_owner_id = TRY_CAST(d.hubspot_owner_id AS BIGINT)
+WHERE d.pipeline IN ({pipelines}) AND d._archived = 0 AND d.createdate >= '{desde}';
+'''
+# Etapas cerradas o ya avanzadas: un lead en ellas no queda como "pendiente de llamar"
+ETAPAS_CERRADAS = {'Anulado', 'Desertado', 'Matriculado', 'Facturado', 'Inscrito', 'Otro Periodo', 'Devolución'}
+SATURADO = 6  # llamadas sin ninguna conectada para considerar un lead "intentado demasiado" en la lista local
+LEADS_SIN_LLAMAR = os.path.join(CARPETA, 'crm_leads_sin_llamar.csv')
+LEADS_SATURADOS = os.path.join(CARPETA, 'crm_leads_saturados.csv')
 
 
 def sincronizar(hashes_llamados):
@@ -145,11 +167,11 @@ WHERE numero_de_telefono_movil__n_ IS NOT NULL AND _archived = 0;
 ''', 'indice', max_filas=2000000)
         indice = pd.DataFrame({'id': q['id'], 'hash': q['tel'].map(cifrar)})
         indice = indice[indice.hash != '']
-        detalle = pd.DataFrame(columns=['id', 'pipeline', 'etapa', 'canal', 'activador', 'tipo_programa', 'origen', 'evento', 'propietario', 'createdate'])
+        detalle = pd.DataFrame(columns=['id'])
     else:
         indice = pd.read_csv(INDICE, dtype=str)
         detalle = pd.read_csv(DETALLE, dtype=str) if os.path.exists(DETALLE) else pd.DataFrame(columns=['id'])
-        if 'origen' not in detalle.columns:  # detalle de una versión anterior: se vuelve a traer completo
+        if 'campana' not in detalle.columns:  # detalle de una versión anterior: se vuelve a traer completo
             detalle = pd.DataFrame(columns=['id'])
         desde = pd.Timestamp(estado['sincronizado_utc']) - pd.Timedelta(hours=6)  # margen por la copia nocturna
         q = consultar(f'''SELECT hs_object_id AS id, CAST(LEFT(numero_de_telefono_movil__n_, 30) AS varchar(30)) AS tel,
@@ -174,12 +196,19 @@ WHERE hs_lastmodifieddate >= '{_fecha_sql(desde)}' OR _archived_at >= '{_fecha_s
         partes.append(consultar(SQL_DETALLE.format(ids=','.join(lote)), f'detalle_{i // 2000}'))
     detalle = pd.concat(partes, ignore_index=True).drop_duplicates('id', keep='last')
 
+    # Todos los leads de los pipelines del panel creados desde el inicio de la base, para ver cuáles nadie ha llamado
+    leads = consultar(SQL_LEADS.format(pipelines=','.join(f"'{p}'" for p in PIPELINES_IDS.values()),
+                                       desde=_fecha_sql(INICIO_BASE + pd.Timedelta(hours=5))), 'leads_pipelines')
+    leads['hash'] = leads.tel.map(cifrar)
+    leads = leads.drop(columns='tel')
+
     indice.to_csv(INDICE, index=False, compression='gzip')
     detalle.to_csv(DETALLE, index=False, compression='gzip')
     estado['sincronizado_utc'] = ahora.isoformat()
     json.dump(estado, open(ESTADO, 'w', encoding='utf-8'))
-    print(f'CRM: {len(indice)} negocios con celular en el índice; detalle de {len(detalle)} negocios llamados.')
-    return indice, detalle, ahora
+    print(f'CRM: {len(indice)} negocios con celular en el índice; detalle de {len(detalle)} negocios llamados; '
+          f'{len(leads)} leads de {" y ".join(PIPELINES_IDS)} creados desde el {INICIO_BASE:%d-%m}.')
+    return indice, detalle, ahora, leads
 
 
 # ---------- Cruce y archivo para el panel ----------
@@ -202,7 +231,32 @@ def _misma_persona(aircall, hubspot):
     return bool(a) and bool(h) and (a <= h or h <= a)
 
 
-def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=None):
+def _arreglar_texto(s):
+    """Corrige textos de HubSpot leídos con la codificación equivocada (p. ej. 'Ingenier铆a' -> 'Ingeniería')."""
+    if isinstance(s, str) and any('一' <= ch <= '鿿' for ch in s):
+        try:
+            return s.encode('gbk').decode('utf-8')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return s
+    return s
+
+
+def _categoria(serie, vacio, minusculas=False):
+    """Une variantes de un mismo texto (mayúsculas, tildes, espacios) y muestra la forma más usada."""
+    limpio = _limpio(serie.map(_arreglar_texto), '')
+    clave = limpio.map(lambda s: ' '.join(_sin_tildes(s)))
+    def mejor(vs):
+        cuenta = vs.value_counts()
+        if minusculas:
+            return cuenta.index[0]
+        bonitas = [v for v in cuenta.index if not v.isupper() and not v.islower()]  # con mayúscula inicial y tildes
+        v = bonitas[0] if bonitas else cuenta.index[0]
+        return v if not (v.isupper() or v.islower()) else v[:1].upper() + v[1:].lower()
+    nombres = {k: mejor(vs) for k, vs in limpio[clave != ''].groupby(clave[clave != ''])}
+    return clave.map(nombres).fillna(vacio)
+
+
+def construir(llamadas, asesoras, indice, detalle, sincronizado, leads, numeros_reales=None):
     """llamadas: salientes ya filtradas (columnas t, f, user, c, customer number cifrado)."""
     det = detalle.copy()
     det['pipeline'] = _limpio(det.pipeline, '(sin pipeline)')
@@ -214,6 +268,11 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
     # Actividad de ingreso: el origen del lead (Stand, Charla presencial, Ferias...); si no tiene, el nombre del evento
     origen, evento = _limpio(det.origen, ''), _limpio(det.evento, '')
     det['actividad'] = origen.where(origen != '', ('Evento: ' + evento).where(evento != '', '(sin actividad)'))
+    det['programa'] = _categoria(det.programa, '(sin programa)')
+    det['campana'] = _categoria(det.campana, '(sin campaña)', minusculas=True)
+    # Hitos que el lead tiene hoy en HubSpot: 1 contactado, 2 cita, 4 inscripción, 8 matrícula
+    det['hitos'] = sum(det[c].notna().astype(int) * b for c, b in
+                       [('fecha_contactado', 1), ('fecha_cita_total', 2), ('fecha_inscripcion', 4), ('fecha_ne', 8)])
     det['creado'] = pd.to_datetime(det.createdate, errors='coerce') - pd.Timedelta(hours=5)  # UTC -> Colombia
     det['activo'] = ~det.pipeline.str.startswith('Archivo')
     neg = indice.merge(det, on='id')
@@ -222,8 +281,10 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
 
     ll = llamadas[['t', 'f', 'user', 'c', 'customer number']].rename(columns={'customer number': 'hash'}).copy()
     ll = ll.sort_values('t').reset_index(drop=True)
-    ll = ll.merge(neg[['hash', 'pipeline', 'etapa', 'canal', 'activador', 'actividad', 'propietario', 'creado']], on='hash', how='left')
+    ll = ll.merge(neg[['hash', 'id', 'pipeline', 'etapa', 'canal', 'activador', 'actividad', 'programa', 'campana', 'hitos',
+                       'propietario', 'creado']], on='hash', how='left')
     ll['en_crm'] = ll.pipeline.notna()
+    ll['hitos'] = ll.hitos.fillna(0).astype(int)
 
     # Propietaria: el nombre de HubSpot se muestra como en Aircall cuando es la misma asesora
     nombres = sorted(ll.user.unique())
@@ -261,13 +322,33 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
         dims[col] = orden
         m = {v: k for k, v in enumerate(orden)}
         return ll[col].map(m).fillna(vacio).astype(int)
-    for col in ['pipeline', 'etapa', 'canal', 'activador', 'dueno', 'actividad']:
+    for col in ['pipeline', 'etapa', 'canal', 'activador', 'dueno', 'actividad', 'programa', 'campana']:
         ll[col + '_i'] = cod(col)
     ai = {a: k for k, a in enumerate(asesoras)}
     ll['ai'] = ll.user.map(ai)
     ll['ci'] = ll.c.map({'no': 0, 'auto': 1, 'efec': 2})
-    cols = ['f', 'ai', 'ci', 'num', 'pipeline_i', 'etapa_i', 'canal_i', 'activador_i', 'dueno_i', 'propia', 'tramo', 'actividad_i']
+    cols = ['f', 'ai', 'ci', 'num', 'pipeline_i', 'etapa_i', 'canal_i', 'activador_i', 'dueno_i', 'propia', 'tramo', 'actividad_i',
+            'programa_i', 'campana_i', 'hitos']
     g = ll.groupby(cols).size().reset_index(name='n')
+
+    # Leads de los pipelines del panel que nadie ha llamado (ninguna llamada saliente al número)
+    lds = leads.copy()
+    lds['creado'] = pd.to_datetime(lds.createdate, errors='coerce') - pd.Timedelta(hours=5)
+    lds['etapa'] = _limpio(lds.etapa, '(sin etapa)')
+    lds['canal'] = _limpio(lds.canal, '(sin canal)')
+    lds['propietario'] = _limpio(lds.propietario, '(sin propietario)')
+    lds['dueno'] = lds.propietario.map(lambda h: dueno_visible(h) if h != '(sin propietario)' else h)
+    llamados = set(ll.hash)
+    lds['sin_tel'] = (lds.hash == '').astype(int)
+    lds['llamado'] = lds.hash.isin(llamados).astype(int)
+    lds['abierto'] = (~lds.etapa.isin(ETAPAS_CERRADAS)).astype(int)
+    lds['fc'] = lds.creado.dt.strftime('%Y-%m-%d')
+    ldims = {}
+    for col in ['pipeline', 'etapa', 'canal', 'dueno']:
+        orden = lds[col].value_counts().index.tolist(); ldims[col] = orden
+        lds[col + '_i'] = lds[col].map({v: k for k, v in enumerate(orden)})
+    lcols = ['fc', 'pipeline_i', 'etapa_i', 'canal_i', 'dueno_i', 'llamado', 'abierto', 'sin_tel']
+    lg = lds.groupby(lcols).size().reset_index(name='n')
 
     local = sincronizado - pd.Timedelta(hours=5)
     datos = {
@@ -275,8 +356,11 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
         'columnas': cols + ['llamadas'],
         'pipelines': dims['pipeline'], 'etapas': dims['etapa'], 'canales': dims['canal'],
         'activadores': dims['activador'], 'duenos': dims['dueno'], 'actividades': dims['actividad'],
+        'programas': dims['programa'], 'campanas': dims['campana'],
         'tramos': TRAMOS, 'cargas_masivas': sorted(str(d) for d in masivos if pd.Timestamp(d) >= INICIO_BASE),
         'filas': g.values.tolist(),
+        'leads': {'columnas': lcols + ['leads'], 'pipelines': ldims['pipeline'], 'etapas': ldims['etapa'],
+                  'canales': ldims['canal'], 'duenos': ldims['dueno'], 'filas': lg.values.tolist()},
     }
     with open(SALIDA, 'w', encoding='utf-8') as fh:
         fh.write('/* Cruce de llamadas con el CRM, agregado. Sin teléfonos ni nombres de clientes. */\nwindow.CRM = ')
@@ -293,6 +377,22 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, numeros_reales=
     no['numero'] = no.hash.map(reales)
     no = no.drop(columns='hash').sort_values('ultima', ascending=False)
     no[['numero', 'llamadas', 'primera', 'ultima', 'asesoras']].to_csv(NO_ENCONTRADOS, index=False, encoding='utf-8-sig')
+
+    # Listas locales para trabajar en HubSpot (por ID de negocio; sin teléfonos ni nombres de clientes)
+    pend = lds[(lds.llamado == 0) & (lds.abierto == 1)].copy()
+    pend['dias_esperando'] = (local.normalize() - pend.creado.dt.normalize()).dt.days
+    pend['sin_telefono'] = pend.sin_tel.map({1: 'sí', 0: ''})
+    pend.sort_values('creado')[['id', 'pipeline', 'etapa', 'canal', 'propietario', 'creado', 'dias_esperando', 'sin_telefono']] \
+        .to_csv(LEADS_SIN_LLAMAR, index=False, encoding='utf-8-sig')
+    por_num = ll[ll.en_crm].groupby('hash').agg(id=('id', 'first'), pipeline=('pipeline', 'first'), etapa=('etapa', 'first'),
+                                                canal=('canal', 'first'), propietario=('propietario', 'first'),
+                                                llamadas=('t', 'size'), conectadas=('c', lambda s: int((s != 'no').sum())),
+                                                primera=('t', 'min'), ultima=('t', 'max'),
+                                                asesoras=('user', lambda s: ', '.join(sorted(s.unique()))))
+    sat = por_num[(por_num.llamadas >= SATURADO) & (por_num.conectadas == 0)].sort_values('llamadas', ascending=False)
+    sat.drop(columns='conectadas').to_csv(LEADS_SATURADOS, index=False, encoding='utf-8-sig')
+    print(f'CRM: {len(pend)} leads abiertos sin ninguna llamada ({os.path.basename(LEADS_SIN_LLAMAR)}); '
+          f'{len(sat)} leads con {SATURADO}+ llamadas y ninguna conectada ({os.path.basename(LEADS_SATURADOS)}).')
 
     en = ll.en_crm.mean() if len(ll) else 0
     print(f'CRM: {ll.en_crm.sum()} de {len(ll)} llamadas salientes ({en:.1%}) van a números del CRM; '

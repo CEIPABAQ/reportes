@@ -8,8 +8,20 @@ function crmCargar() {
   const de = (arr, i) => i < 0 ? null : arr[i];
   crmFilas = C.filas.map(r => ({fecha: r[0], asesora: A[r[1]] ? A[r[1]].nombre : '—', equipo: A[r[1]] ? A[r[1]].equipo : '—', clase: r[2], num: r[3],
     pipeline: de(C.pipelines, r[4]), etapa: de(C.etapas, r[5]), canal: de(C.canales, r[6]), activador: de(C.activadores, r[7]),
-    dueno: de(C.duenos, r[8]), propia: r[9], tramo: r[10], actividad: de(C.actividades || [], r[11]), llamadas: r[12]}));
+    dueno: de(C.duenos, r[8]), propia: r[9], tramo: r[10], actividad: de(C.actividades || [], r[11]),
+    programa: de(C.programas || [], r[12]), campana: de(C.campanas || [], r[13]), hitos: r[14], llamadas: r[15]}));
   return crmFilas;
+}
+// Leads de los pipelines del panel (creados desde el inicio de la base), llamados o no
+let crmLeads = null;
+function crmLeadsCargar() {
+  if (crmLeads) return crmLeads;
+  const L = (window.CRM || {}).leads, A = (window.DATOS || {}).asesoras || [];
+  if (!L) return (crmLeads = []);
+  const eqDe = new Map(A.map(a => [a.nombre, a.equipo]));
+  crmLeads = L.filas.map(r => ({fecha: r[0], pipeline: L.pipelines[r[1]], etapa: L.etapas[r[2]], canal: L.canales[r[3]], dueno: L.duenos[r[4]],
+    equipo: eqDe.get(L.duenos[r[4]]) || null, llamado: r[5], abierto: r[6], sin_tel: r[7], leads: r[8]}));
+  return crmLeads;
 }
 // Pipelines que se muestran en la pestaña; las llamadas a leads de otros pipelines solo se cuentan aparte
 const PIPELINES_CRM = ['Pregrado Barranquilla', 'Especializaciones'];
@@ -103,7 +115,7 @@ dash.calc('crm_activador_grupos', {
 /* Tabla agrupada: una fila por grupo con su total y un botón para ver el detalle.
    Respeta el orden por columna y la fila de promedio de las demás tablas. */
 const abiertos = {};
-function cuerpoGrupos(tb, id, cols, hijoKey, limite) {
+function cuerpoGrupos(tb, id, cols, hijoKey, limite, etiqueta = ['actividad', 'actividades']) {
   const g = dash.data(id); const nombre = tb.dataset.draw;
   tb.replaceChildren();
   if (g.status !== 'ok') return;
@@ -133,7 +145,7 @@ function cuerpoGrupos(tb, id, cols, hijoKey, limite) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'expandir';
         b.setAttribute('aria-expanded', exp ? 'true' : 'false');
         b.textContent = `${exp ? '▾' : '▸'} ${r[k]}`;
-        const n = document.createElement('small'); n.textContent = ` ${hijos.length} ${hijos.length === 1 ? 'actividad' : 'actividades'}`; b.appendChild(n);
+        const n = document.createElement('small'); n.textContent = ` ${hijos.length} ${hijos.length === 1 ? etiqueta[0] : etiqueta[1]}`; b.appendChild(n);
         b.onclick = () => { exp ? abierto.delete(clave) : abierto.add(clave); dash.draw(nombre); };
         celda(tr, i, b);
       } else {
@@ -144,7 +156,7 @@ function cuerpoGrupos(tb, id, cols, hijoKey, limite) {
     tb.appendChild(tr);
     if (exp) hijos.forEach(h => {
       const th = document.createElement('tr'); th.className = 'hijo';
-      cols.forEach(([k, f], i) => celda(th, i, document.createTextNode(i === 0 ? h.actividad : (h[k] == null ? '—' : f(h[k])))));
+      cols.forEach(([k, f], i) => celda(th, i, document.createTextNode(i === 0 ? h.nombre_hijo || h.actividad : (h[k] == null ? '—' : f(h[k])))));
       tb.appendChild(th);
     });
   });
@@ -259,4 +271,133 @@ dash.draw('crm_reco_canal', el => {
   el.textContent = `${mejor.canal} es el canal con más leads contactados de forma efectiva (${pc(mejor.pct_leads_efec)}, con ${n1(mejor.por_lead)} llamadas por lead); ` +
     `${peor.canal} es el más bajo (${pc(peor.pct_leads_efec)}, con ${n1(peor.por_lead)} llamadas por lead). ` +
     'Recomendación: dar prioridad a los canales que más se convierten en contacto, y revisar con quien carga los leads la calidad de los datos de los canales que necesitan muchas llamadas para lograr un contacto.';
+});
+
+/* ======== Resultado de las llamadas: en qué terminaron hoy los leads llamados ======== */
+// Hitos de HubSpot (bits): 1 contactado, 2 cita, 4 inscripción, 8 matrícula
+function medirResultado(rows) {
+  const leads = new Map();
+  let llamadas = 0, conectadas = 0;
+  const efec = new Set();
+  for (const r of rows) {
+    llamadas += r.llamadas; if (r.clase > 0) conectadas += r.llamadas; if (r.clase === 2) efec.add(r.num);
+    if (!leads.has(r.num)) leads.set(r.num, {hitos: r.hitos, llamadas: 0});
+    leads.get(r.num).llamadas += r.llamadas;
+  }
+  let contactados = 0, citas = 0, inscritos = 0, matriculados = 0;
+  for (const l of leads.values()) {
+    if (l.hitos & 1) contactados++;
+    if (l.hitos & 2) citas++;
+    if (l.hitos & 4) inscritos++;
+    if (l.hitos & 8) matriculados++;
+  }
+  const n = leads.size, div = (a, b) => b ? a / b : null;
+  return {leads: n, llamadas, pct_conect: div(conectadas, llamadas), pct_leads_efec: div(efec.size, n),
+    contactados, pct_contactados: div(contactados, n), citas, pct_citas: div(citas, n), inscritos, pct_inscritos: div(inscritos, n),
+    matriculados, llamadas_por_cita: div(llamadas, citas)};
+}
+const VER_POR = {asesora: 'Asesora que llama', canal: 'Canal', activador: 'Activador', programa: 'Programa académico', campana: 'Campaña (solo Internet)'};
+document.querySelectorAll('#seg-resultado button').forEach(b => b.addEventListener('click', () => {
+  const por = b.dataset.por;
+  document.querySelectorAll('#seg-resultado button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  const th = document.querySelector('#crm-resultado th[data-field="grupo"]'); if (th) th.textContent = VER_POR[por];
+  if (abiertos.t_crm_resultado) abiertos.t_crm_resultado.clear();
+  dash.setParams({crm_por: por});
+}));
+dash.calc('crm_resultado_kpi', {inputs: ['crm_filtro'], title: 'Embudo de los leads llamados', fn: f => [medirResultado(enCrm(f))]});
+dash.calc('crm_resultado', {
+  inputs: ['crm_filtro'], title: 'Resultado de los leads llamados, por grupo',
+  fn: f => {
+    const k = dash.params().crm_por || 'asesora';
+    let rs = enCrm(f);
+    if (k === 'campana') rs = rs.filter(r => r.canal === 'Internet');
+    return [...agrupar(rs, k)].map(([g, xs]) => ({grupo: g, ...medirResultado(xs)})).sort((a, b) => b.leads - a.leads);
+  }
+});
+dash.draw('t_crm_resultado', tb => {
+  cuerpo(tb, 'crm_resultado', [['grupo', S], ['leads', n0], ['pct_conect', pc], ['pct_leads_efec', pc], ['pct_contactados', pc],
+    ['citas', n0], ['pct_citas', pc], ['inscritos', n0], ['matriculados', n0], ['llamadas_por_cita', n1]]);
+  recortar(tb, 10);
+});
+dash.draw('crm_resultado_nota', el => {
+  const g = dash.data('crm_resultado_kpi'); const k = g.status === 'ok' && g.data[0];
+  if (!k || !k.leads) { el.textContent = 'Sin leads llamados con estos filtros.'; return; }
+  el.textContent = `De ${n0(k.leads)} leads llamados, el ${pc(k.pct_contactados)} figura hoy como contactado en HubSpot, el ${pc(k.pct_citas)} tiene cita, ` +
+    `${n0(k.inscritos)} se inscribieron y ${n0(k.matriculados)} se matricularon. Por cada lead con cita se hicieron ${n1(k.llamadas_por_cita)} llamadas en total.`;
+});
+
+/* ======== Leads que nadie ha llamado ======== */
+dash.calc('crm_leads_filtro', {
+  inputs: [], title: 'Leads creados en el periodo (por fecha de creación); los filtros de equipo y asesora se aplican a la propietaria',
+  fn: () => {
+    const p = dash.params();
+    const sem = lista(p.semanas).map(Number), nuc = lista(p.nucleos).map(Number), eq = lista(p.equipos), as = lista(p.asesoras);
+    return crmLeadsCargar().filter(r =>
+      (!p.desde || r.fecha >= p.desde) && (!p.hasta || r.fecha <= p.hasta) &&
+      (!sem.length || sem.includes(semanaDe(r.fecha))) && (!nuc.length || nuc.includes(nucleoDe(r.fecha))) &&
+      (!eq.length || eq.includes(r.equipo)) && (!as.length || as.includes(r.dueno)));
+  }
+});
+function medirLeads(rows) {
+  const hoy = ((window.CRM || {}).sincronizado || '').slice(0, 10);
+  let leads = 0, llamados = 0, pendientes = 0, viejos = 0;
+  for (const r of rows) {
+    leads += r.leads; if (r.llamado) llamados += r.leads;
+    if (!r.llamado && r.abierto) { pendientes += r.leads; if (hoy && r.fecha < addDays(hoy, -3)) viejos += r.leads; }
+  }
+  return {leads, llamados, pct_llamados: leads ? llamados / leads : null, pendientes, viejos};
+}
+dash.calc('crm_leads_kpi', {inputs: ['crm_leads_filtro'], title: 'Cobertura de llamadas', fn: f => [medirLeads(f)]});
+dash.calc('crm_leads_duenos', {
+  inputs: ['crm_leads_filtro'], title: 'Leads sin llamar por propietaria, con el detalle por canal',
+  fn: f => [...agrupar(f, 'dueno')].map(([d, rs]) => ({dueno: d, en_aircall: rs[0].equipo ? 'Sí' : 'No', ...medirLeads(rs),
+    hijos: [...agrupar(rs, 'canal')].map(([c, xs]) => ({nombre_hijo: c, ...medirLeads(xs)})).filter(h => h.pendientes > 0).sort((a, b) => b.pendientes - a.pendientes)}))
+    .filter(r => r.pendientes > 0).sort((a, b) => b.pendientes - a.pendientes)
+});
+dash.draw('t_crm_leads_duenos', tb => cuerpoGrupos(tb, 'crm_leads_duenos',
+  [['dueno', S], ['en_aircall', S], ['leads', n0], ['pct_llamados', pc], ['pendientes', n0], ['viejos', n0]], 'hijos', 10, ['canal', 'canales']));
+
+/* ======== Leads intentados demasiado ======== */
+document.querySelectorAll('#seg-saturados button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#seg-saturados button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  dash.setParams({crm_sat: +b.dataset.n});
+}));
+dash.calc('crm_saturados_base', {
+  inputs: ['crm_filtro'], title: 'Leads con muchas llamadas en el periodo y ninguna conectada',
+  fn: f => {
+    const n = dash.params().crm_sat || 6, m = new Map();
+    for (const r of enCrm(f)) {
+      if (!m.has(r.num)) m.set(r.num, {llamadas: 0, conectadas: 0, dueno: r.dueno || '(sin propietario)', etapa: r.etapa, canal: r.canal});
+      const x = m.get(r.num); x.llamadas += r.llamadas; if (r.clase > 0) x.conectadas += r.llamadas;
+    }
+    return [...m.values()].filter(x => x.llamadas >= n && x.conectadas === 0);
+  }
+});
+const medirSat = xs => { const ll = xs.reduce((s, x) => s + x.llamadas, 0); return {leads: xs.length, llamadas: ll, por_lead: xs.length ? ll / xs.length : null}; };
+dash.calc('crm_saturados_kpi', {
+  inputs: ['crm_saturados_base', 'crm_filtro'], title: 'Resumen de leads intentados demasiado',
+  fn: (xs, f) => { const total = medirCrm(enCrm(f)).llamadas; const m = medirSat(xs); return [{...m, pct_llamadas: total ? m.llamadas / total : null}]; }
+});
+dash.calc('crm_saturados', {
+  inputs: ['crm_saturados_base'], title: 'Leads intentados demasiado por propietaria, con el detalle por etapa',
+  fn: xs => [...agrupar(xs, 'dueno')].map(([d, rs]) => ({dueno: d, ...medirSat(rs),
+    hijos: [...agrupar(rs, 'etapa')].map(([e, ys]) => ({nombre_hijo: e, ...medirSat(ys)})).sort((a, b) => b.leads - a.leads)}))
+    .sort((a, b) => b.leads - a.leads)
+});
+dash.draw('t_crm_saturados', tb => cuerpoGrupos(tb, 'crm_saturados', [['dueno', S], ['leads', n0], ['llamadas', n0], ['por_lead', n1]], 'hijos', 10, ['etapa', 'etapas']));
+dash.draw('crm_saturados_nota', el => {
+  const g = dash.data('crm_saturados_kpi'); const k = g.status === 'ok' && g.data[0];
+  const n = dash.params().crm_sat || 6;
+  if (!k || !k.leads) { el.textContent = `Ningún lead recibió ${n} llamadas o más sin conectarse con estos filtros.`; return; }
+  el.textContent = `${n0(k.leads)} leads recibieron ${n} llamadas o más en el periodo y ninguna se conectó: son ${n0(k.llamadas)} llamadas, el ${pc(k.pct_llamadas)} de las llamadas a estos pipelines. ` +
+    'Conviene decidir si se cierran, se intentan por WhatsApp o correo, o se revisa si el número está bien.';
+});
+
+textDraw('n1', n1);
+// Los selectores de la pestaña siguen a los filtros (por ejemplo, al usar "Limpiar filtros")
+dash.onData(() => {
+  const p = dash.params(), por = p.crm_por || 'asesora', sat = String(p.crm_sat || 6);
+  document.querySelectorAll('#seg-resultado button').forEach(x => x.setAttribute('aria-pressed', x.dataset.por === por ? 'true' : 'false'));
+  document.querySelectorAll('#seg-saturados button').forEach(x => x.setAttribute('aria-pressed', x.dataset.n === sat ? 'true' : 'false'));
+  const th = document.querySelector('#crm-resultado th[data-field="grupo"]'); if (th) th.textContent = VER_POR[por];
 });

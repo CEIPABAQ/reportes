@@ -9,3 +9,5 @@ crm_detalle.csv.gz
 crm_estado.json
 crm_no_encontrados.csv
 .crm_tmp/
+crm_leads_sin_llamar.csv
+crm_leads_saturados.csv

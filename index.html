@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <div class="pa-fondo">
@@ -576,6 +576,93 @@
       </div>
     </div>
 
+    <div id="crm-resultado">
+      <h2>¿En qué terminaron los leads llamados?</h2>
+      <p class="say">Para los leads llamados en el periodo, lo que HubSpot registra hoy: si están marcados como contactados, si tienen cita, si se inscribieron o se matricularon. Elige cómo agruparlos; el programa y la campaña sirven para ver qué se pide más y qué trae leads que contestan.</p>
+      <div class="seg-fila"><span>Ver por</span><div class="seg" id="seg-resultado" role="group" aria-label="Agrupar resultados por">
+        <button type="button" data-por="asesora" aria-pressed="true">Asesora que llama</button>
+        <button type="button" data-por="canal" aria-pressed="false">Canal</button>
+        <button type="button" data-por="activador" aria-pressed="false">Activador</button>
+        <button type="button" data-por="programa" aria-pressed="false">Programa académico</button>
+        <button type="button" data-por="campana" aria-pressed="false">Campaña (Internet)</button>
+      </div></div>
+      <div class="cards seis">
+        <div class="card"><span class="k">Leads llamados</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="leads" data-row="0">—</span><span class="s">de los dos pipelines</span></div>
+        <div class="card"><span class="k">Contactados</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="contactados" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_resultado_kpi" data-field="pct_contactados" data-row="0">—</b> de los llamados</span></div>
+        <div class="card"><span class="k">Con cita</span><span class="v" data-draw="n" data-accent data-source="crm_resultado_kpi" data-field="citas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_resultado_kpi" data-field="pct_citas" data-row="0">—</b> de los llamados</span></div>
+        <div class="card"><span class="k">Inscritos</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="inscritos" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_resultado_kpi" data-field="pct_inscritos" data-row="0">—</b> de los llamados</span></div>
+        <div class="card"><span class="k">Matriculados</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="matriculados" data-row="0">—</span><span class="s">hoy en HubSpot</span></div>
+        <div class="card"><span class="k">Llamadas por cita</span><span class="v" data-draw="n1" data-source="crm_resultado_kpi" data-field="llamadas_por_cita" data-row="0">—</span><span class="s">llamadas del periodo / leads con cita</span></div>
+      </div>
+      <div class="tw" style="margin-top:var(--cds-gap-lg)">
+        <table class="ancha" data-source="crm_resultado" data-row-key="grupo">
+          <thead><tr>
+            <th data-field="grupo" aria-sort="none" tabindex="0">Asesora que llama</th>
+            <th data-field="leads" aria-sort="none" tabindex="0">Leads llamados</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% llamadas conectadas</th>
+            <th data-field="pct_leads_efec" aria-sort="none" tabindex="0">% leads con contacto efectivo</th>
+            <th data-field="pct_contactados" aria-sort="none" tabindex="0">% contactados en HubSpot</th>
+            <th data-field="citas" aria-sort="none" tabindex="0">Con cita</th>
+            <th data-field="pct_citas" aria-sort="none" tabindex="0">% con cita</th>
+            <th data-field="inscritos" aria-sort="none" tabindex="0">Inscritos</th>
+            <th data-field="matriculados" aria-sort="none" tabindex="0">Matriculados</th>
+            <th data-field="llamadas_por_cita" aria-sort="none" tabindex="0">Llamadas por cita</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_resultado"></tbody>
+        </table>
+      </div>
+      <p class="nota-reco" data-draw="crm_resultado_nota">—</p>
+      <p class="cap">Es el estado actual en HubSpot, no necesariamente logrado con las llamadas del periodo: un lead puede haber tenido la cita antes. Por asesora, un lead que llamaron varias asesoras cuenta para cada una. "Contactado", "cita", "inscripción" y "matrícula" son las fechas de esos hitos en HubSpot, igual que en los tableros de Power BI.</p>
+    </div>
+
+    <div id="crm-sin-llamar">
+      <h2>Leads que nadie ha llamado</h2>
+      <p class="say">Leads de Pregrado Barranquilla y Especializaciones creados en el periodo elegido (por fecha de creación en HubSpot) y su cobertura: cuántos han recibido al menos una llamada en Aircall. Los "pendientes" están en una etapa abierta y nunca se han llamado. Aquí los filtros de equipo y asesora se aplican a la propietaria del lead.</p>
+      <div class="cards">
+        <div class="card"><span class="k">Leads creados</span><span class="v" data-draw="n" data-source="crm_leads_kpi" data-field="leads" data-row="0">—</span><span class="s">en el periodo, en los dos pipelines</span></div>
+        <div class="card"><span class="k">Con al menos una llamada</span><span class="v" data-draw="p" data-accent data-source="crm_leads_kpi" data-field="pct_llamados" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_leads_kpi" data-field="llamados" data-row="0">—</b> leads llamados</span></div>
+        <div class="card"><span class="k">Pendientes sin llamar</span><span class="v" data-draw="n" data-source="crm_leads_kpi" data-field="pendientes" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_leads_kpi" data-field="viejos" data-row="0">—</b> llevan más de 3 días</span></div>
+      </div>
+      <div class="tw" style="margin-top:var(--cds-gap-lg)">
+        <table class="ancha agrupada" data-source="crm_leads_duenos" data-row-key="dueno">
+          <thead><tr>
+            <th data-field="dueno" aria-sort="none" tabindex="0">Propietaria / canal</th>
+            <th data-field="en_aircall" aria-sort="none" tabindex="0">Llama por Aircall</th>
+            <th data-field="leads" aria-sort="none" tabindex="0">Leads creados</th>
+            <th data-field="pct_llamados" aria-sort="none" tabindex="0">% con llamada</th>
+            <th data-field="pendientes" aria-sort="none" tabindex="0">Pendientes sin llamar</th>
+            <th data-field="viejos" aria-sort="none" tabindex="0">De más de 3 días</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_leads_duenos"></tbody>
+        </table>
+      </div>
+      <p class="cap">Haz clic en una propietaria para ver sus pendientes por canal. Parte de los pendientes vienen de cargas masivas (por ejemplo, reactivaciones del 16 de octubre o bases de egresados) y otros son de propietarios que no llaman por Aircall ("No" en la segunda columna). La lista con el ID de cada negocio, para buscarlo en HubSpot, queda solo en el computador donde se actualiza el panel (crm_leads_sin_llamar.csv).</p>
+    </div>
+
+    <div id="crm-saturados">
+      <h2>Leads intentados demasiado</h2>
+      <p class="say">Leads que recibieron muchas llamadas en el periodo y ninguna se conectó. Son candidatos a cerrar, a pasar a WhatsApp o correo, o a revisar el número.</p>
+      <div class="seg-fila"><span>Llamadas sin conectar</span><div class="seg" id="seg-saturados" role="group" aria-label="Mínimo de llamadas sin conectar">
+        <button type="button" data-n="4" aria-pressed="false">4 o más</button>
+        <button type="button" data-n="6" aria-pressed="true">6 o más</button>
+        <button type="button" data-n="8" aria-pressed="false">8 o más</button>
+        <button type="button" data-n="10" aria-pressed="false">10 o más</button>
+      </div></div>
+      <p class="nota-reco" data-draw="crm_saturados_nota">—</p>
+      <div class="tw" style="margin-top:var(--cds-gap-md)">
+        <table class="ancha agrupada" data-source="crm_saturados" data-row-key="dueno">
+          <thead><tr>
+            <th data-field="dueno" aria-sort="none" tabindex="0">Propietaria en HubSpot / etapa</th>
+            <th data-field="leads" aria-sort="none" tabindex="0">Leads</th>
+            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas sin conectar</th>
+            <th data-field="por_lead" aria-sort="none" tabindex="0">Llamadas por lead</th>
+          </tr></thead>
+          <tbody data-draw="t_crm_saturados"></tbody>
+        </table>
+      </div>
+      <p class="cap">Haz clic en una propietaria para ver en qué etapa están esos leads. La lista con el ID de cada negocio (todo el historial, 6 llamadas o más) queda en el computador donde se actualiza el panel (crm_leads_saturados.csv).</p>
+    </div>
+
     <div id="crm-no-encontrados">
       <h2>Números que no aparecen en el CRM</h2>
       <p class="say" data-draw="crm_no_texto">—</p>
@@ -639,9 +726,9 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-<script src="datos.js"></script>
-<script src="crm.js"></script>
-<script src="app.js"></script>
-<script src="crm_panel.js"></script>
+<script src="datos.js?v=7"></script>
+<script src="crm.js?v=7"></script>
+<script src="app.js?v=7"></script>
+<script src="crm_panel.js?v=7"></script>
 </body>
 </html>

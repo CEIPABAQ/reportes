@@ -41,7 +41,7 @@ El cruce con el CRM usa la skill `crm-ceipa` de este computador, con tu código 
 
 El historial queda solo en tu computador: guarda las columnas que usa el panel y los números de clientes cifrados, y está en `.gitignore` junto con los Excel, que no se suben a GitHub. Haz copia de `historial_llamadas.csv.gz`; si se pierde, vuelve a pasar todos los Excel juntos y se reconstruye.
 
-El cruce con el CRM también deja archivos locales que no se suben: `crm_indice.csv.gz` y `crm_detalle.csv.gz` (copia de trabajo del CRM, con teléfonos cifrados), `crm_estado.json` y `crm_no_encontrados.csv`, que es la lista con los números reales que no aparecen en el CRM. Si se borran, la siguiente actualización los vuelve a traer completos (tarda unos tres minutos).
+El cruce con el CRM también deja archivos locales que no se suben: `crm_indice.csv.gz` y `crm_detalle.csv.gz` (copia de trabajo del CRM, con teléfonos cifrados), `crm_estado.json`, `crm_no_encontrados.csv` (los números reales que no aparecen en el CRM), `crm_leads_sin_llamar.csv` (leads abiertos que nadie ha llamado, con el id del negocio para buscarlos en HubSpot) y `crm_leads_saturados.csv` (leads con 6 llamadas o más y ninguna conectada). Si se borran, la siguiente actualización los vuelve a traer completos (tarda unos tres minutos).
 
 Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `actualizar_datos.py` y también en el texto "Equipos" al final de `index.html`.
 
@@ -61,6 +61,10 @@ Si entra una asesora nueva a Posgrados, agrégala en la línea `POSGRADOS` de `a
 - **Estado actual:** pipeline, etapa, canal, activador y propietaria son los de hoy en HubSpot, no los del día de la llamada.
 - **A sus leads:** la asesora que llamó en Aircall es la propietaria del negocio en HubSpot. Los nombres se comparan sin tildes y aceptando palabras de más; las excepciones van en `ALIAS` de `crm_sync.py`.
 - **Velocidad al primer contacto:** solo leads creados desde el 13 de octubre, sin llamadas antes de existir en HubSpot y sin las cargas masivas (más de 300 leads llamados creados el mismo día, como el cambio de periodo del 16 de octubre).
+- **Resultado de las llamadas:** de los leads llamados en el periodo, cuántos tienen hoy en HubSpot fecha de contactado, de cita, de inscripción o de matrícula (NE). Se puede ver por asesora, canal, activador, programa académico o campaña UTM (solo canal Internet).
+- **Leads que nadie ha llamado:** todos los leads de los dos pipelines creados desde el 13 de octubre, filtrados por fecha de creación; "pendiente" es un lead en etapa abierta (no Anulado, Desertado, Matriculado, Facturado, Inscrito, Otro Periodo ni Devolución) sin ninguna llamada en Aircall. Los filtros de equipo y asesora se aplican a la propietaria.
+- **Leads intentados demasiado:** leads con 4, 6, 8 o 10 llamadas o más en el periodo y ninguna conectada, por propietaria y etapa.
+- **Caché:** `index.html` carga los archivos con `?v=N`; si cambias `app.js`, `crm_panel.js` o `styles.css`, sube ese número para que los navegadores no usen la versión vieja.
 
 ## Probarlo en tu computador
 
