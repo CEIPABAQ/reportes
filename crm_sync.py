@@ -32,6 +32,7 @@ DETALLE = os.path.join(CARPETA, 'crm_detalle.csv.gz')
 ESTADO = os.path.join(CARPETA, 'crm_estado.json')
 NO_ENCONTRADOS = os.path.join(CARPETA, 'crm_no_encontrados.csv')
 TMP = os.path.join(CARPETA, '.crm_tmp')
+PRIVADO = os.path.join(CARPETA, 'crm_privado.js')  # fichas con datos personales: local, en .gitignore
 SALIDA = os.path.join(CARPETA, 'crm.js')
 
 INICIO_BASE = pd.Timestamp('2026-10-13')  # primer día con llamadas en la base
@@ -123,27 +124,39 @@ SQL_DETALLE = '''SELECT d.hs_object_id AS id, p.PipelineLabel AS pipeline, s.Sta
        CAST(LEFT(d.evento__n_, 150) AS nvarchar(150)) AS evento,
        CAST(LEFT(d.programa_academico__n_, 150) AS nvarchar(150)) AS programa,
        CAST(LEFT(d.utm_campaign_del__n_, 120) AS nvarchar(120)) AS campana,
+       CAST(LEFT(d.utm_source_del__n_, 80) AS nvarchar(80)) AS utm_source,
+       CAST(LEFT(d.utm_medium_del__n_, 80) AS nvarchar(80)) AS utm_medium,
+       CAST(LEFT(d.tipo_de_lead, 40) AS nvarchar(40)) AS tipo_lead,
+       CAST(LEFT(d.periodo_stock, 40) AS nvarchar(40)) AS periodo_stock,
+       CAST(LEFT(d.modalidad_estudio__n_, 60) AS nvarchar(60)) AS modalidad,
+       CAST(LEFT(d.jornada, 60) AS nvarchar(60)) AS jornada,
        d.fecha_contactado, d.fecha_cita_total, d.fecha_inscripcion, d.fecha_ne,
        LTRIM(RTRIM(CONCAT(o.FirstName, ' ', o.LastName))) AS propietario,
-       d.createdate
+       d.createdate,
+       CAST(LEFT(d.dealname, 150) AS nvarchar(150)) AS p_negocio,
+       LTRIM(RTRIM(CONCAT(CAST(LEFT(d.primer_nombre, 60) AS nvarchar(60)), ' ', CAST(LEFT(d.segundo_nombre, 60) AS nvarchar(60)), ' ',
+                          CAST(LEFT(d.primer_apellido, 60) AS nvarchar(60)), ' ', CAST(LEFT(d.segundo_apellido, 60) AS nvarchar(60))))) AS p_nombre,
+       CAST(LEFT(d.no__identificacion__n_, 30) AS nvarchar(30)) AS p_cedula,
+       CAST(LEFT(d.numero_de_telefono_movil__n_, 30) AS nvarchar(30)) AS p_telefono,
+       CAST(LEFT(d.correo__n_, 120) AS nvarchar(120)) AS p_correo,
+       CAST(LEFT(d.observaciones, 1500) AS nvarchar(1500)) AS p_observaciones
 FROM dbo.Deal AS d
 LEFT JOIN dbo.DealPipeline AS p ON p.PipelineId = d.pipeline
 LEFT JOIN dbo.DealPipelineStage AS s ON s.PipelineId = d.pipeline AND s.DealStage = d.dealstage
 LEFT JOIN dbo.Owner AS o ON o.hubspot_owner_id = TRY_CAST(d.hubspot_owner_id AS BIGINT)
 WHERE d.hs_object_id IN ({ids});
 '''
+# Columnas con datos personales: solo van al archivo local crm_privado.js, nunca a crm.js
+PRIVADAS = ['p_negocio', 'p_nombre', 'p_cedula', 'p_telefono', 'p_correo', 'p_observaciones']
 
+
+# Número de la cuenta de HubSpot (sale en la dirección de cualquier negocio: app.hubspot.com/contacts/NÚMERO/...).
+# Con él, la ficha de cada lead en el panel trae el enlace directo al negocio. La copia del CRM no lo guarda.
+HUBSPOT_PORTAL = ''
 
 PIPELINES_IDS = {'Pregrado Barranquilla': '8405051', 'Especializaciones': '8407014'}
-SQL_LEADS = '''SELECT d.hs_object_id AS id, CAST(LEFT(d.numero_de_telefono_movil__n_, 30) AS varchar(30)) AS tel,
-       p.PipelineLabel AS pipeline, s.StageLabel AS etapa,
-       CAST(LEFT(d.canal__n_, 100) AS nvarchar(100)) AS canal,
-       LTRIM(RTRIM(CONCAT(o.FirstName, ' ', o.LastName))) AS propietario,
-       d.createdate
+SQL_LEADS = '''SELECT d.hs_object_id AS id, CAST(LEFT(d.numero_de_telefono_movil__n_, 30) AS varchar(30)) AS tel
 FROM dbo.Deal AS d
-JOIN dbo.DealPipeline AS p ON p.PipelineId = d.pipeline
-LEFT JOIN dbo.DealPipelineStage AS s ON s.PipelineId = d.pipeline AND s.DealStage = d.dealstage
-LEFT JOIN dbo.Owner AS o ON o.hubspot_owner_id = TRY_CAST(d.hubspot_owner_id AS BIGINT)
 WHERE d.pipeline IN ({pipelines}) AND d._archived = 0 AND d.createdate >= '{desde}';
 '''
 # Etapas cerradas o ya avanzadas: un lead en ellas no queda como "pendiente de llamar"
@@ -171,7 +184,7 @@ WHERE numero_de_telefono_movil__n_ IS NOT NULL AND _archived = 0;
     else:
         indice = pd.read_csv(INDICE, dtype=str)
         detalle = pd.read_csv(DETALLE, dtype=str) if os.path.exists(DETALLE) else pd.DataFrame(columns=['id'])
-        if 'campana' not in detalle.columns:  # detalle de una versión anterior: se vuelve a traer completo
+        if 'p_observaciones' not in detalle.columns:  # detalle de una versión anterior: se vuelve a traer completo
             detalle = pd.DataFrame(columns=['id'])
         desde = pd.Timestamp(estado['sincronizado_utc']) - pd.Timedelta(hours=6)  # margen por la copia nocturna
         q = consultar(f'''SELECT hs_object_id AS id, CAST(LEFT(numero_de_telefono_movil__n_, 30) AS varchar(30)) AS tel,
@@ -188,7 +201,14 @@ WHERE hs_lastmodifieddate >= '{_fecha_sql(desde)}' OR _archived_at >= '{_fecha_s
         detalle = detalle[~detalle.id.isin(modificados)]
         print(f'CRM: {len(modificados)} negocios modificados desde la última sincronización.')
 
-    necesarios = set(indice[indice.hash.isin(hashes_llamados)].id)
+    # Todos los leads de los pipelines del panel creados desde el inicio de la base, para ver cuáles nadie ha llamado
+    leads = consultar(SQL_LEADS.format(pipelines=','.join(f"'{p}'" for p in PIPELINES_IDS.values()),
+                                       desde=_fecha_sql(INICIO_BASE + pd.Timedelta(hours=5))), 'leads_pipelines')
+    leads['hash'] = leads.tel.map(cifrar)
+    leads = leads.drop(columns='tel')
+
+    # Detalle de los negocios llamados y de los leads de los pipelines (para su ficha en el panel)
+    necesarios = set(indice[indice.hash.isin(hashes_llamados)].id) | set(leads.id)
     faltan = sorted(necesarios - set(detalle.id))
     partes = [detalle[detalle.id.isin(necesarios)]]
     for i in range(0, len(faltan), 2000):  # por llave: livianas aunque sean varias
@@ -196,19 +216,13 @@ WHERE hs_lastmodifieddate >= '{_fecha_sql(desde)}' OR _archived_at >= '{_fecha_s
         partes.append(consultar(SQL_DETALLE.format(ids=','.join(lote)), f'detalle_{i // 2000}'))
     detalle = pd.concat(partes, ignore_index=True).drop_duplicates('id', keep='last')
 
-    # Todos los leads de los pipelines del panel creados desde el inicio de la base, para ver cuáles nadie ha llamado
-    leads = consultar(SQL_LEADS.format(pipelines=','.join(f"'{p}'" for p in PIPELINES_IDS.values()),
-                                       desde=_fecha_sql(INICIO_BASE + pd.Timedelta(hours=5))), 'leads_pipelines')
-    leads['hash'] = leads.tel.map(cifrar)
-    leads = leads.drop(columns='tel')
-
     indice.to_csv(INDICE, index=False, compression='gzip')
     detalle.to_csv(DETALLE, index=False, compression='gzip')
     estado['sincronizado_utc'] = ahora.isoformat()
     json.dump(estado, open(ESTADO, 'w', encoding='utf-8'))
-    print(f'CRM: {len(indice)} negocios con celular en el índice; detalle de {len(detalle)} negocios llamados; '
+    print(f'CRM: {len(indice)} negocios con celular en el índice; detalle de {len(detalle)} negocios; '
           f'{len(leads)} leads de {" y ".join(PIPELINES_IDS)} creados desde el {INICIO_BASE:%d-%m}.')
-    return indice, detalle, ahora, leads
+    return indice, detalle, ahora, leads, HUBSPOT_PORTAL
 
 
 # ---------- Cruce y archivo para el panel ----------
@@ -256,47 +270,76 @@ def _categoria(serie, vacio, minusculas=False):
     return clave.map(nombres).fillna(vacio)
 
 
-def construir(llamadas, asesoras, indice, detalle, sincronizado, leads, numeros_reales=None):
-    """llamadas: salientes ya filtradas (columnas t, f, user, c, customer number cifrado)."""
+def _fecha_local(serie):
+    """Fecha UTC de HubSpot -> 'AAAA-MM-DD' en hora de Colombia ('' si no hay)."""
+    t = pd.to_datetime(serie, errors='coerce') - pd.Timedelta(hours=5)
+    return t.dt.strftime('%Y-%m-%d').fillna('')
+
+
+def construir(llamadas, asesoras, indice, detalle, sincronizado, leads, numeros_reales=None, portal=''):
+    """llamadas: salientes ya filtradas (columnas t, f, h, ti, user, c y customer number cifrado)."""
     det = detalle.copy()
     det['pipeline'] = _limpio(det.pipeline, '(sin pipeline)')
     det['etapa'] = _limpio(det.etapa, '(sin etapa)')
     det['canal'] = _limpio(det.canal, '(sin canal)')
     det['activador'] = _limpio(det.activador, '(sin activador)')
-    det['tipo_programa'] = _limpio(det.tipo_programa, '(sin tipo)')
     det['propietario'] = _limpio(det.propietario, '(sin propietario)')
     # Actividad de ingreso: el origen del lead (Stand, Charla presencial, Ferias...); si no tiene, el nombre del evento
     origen, evento = _limpio(det.origen, ''), _limpio(det.evento, '')
     det['actividad'] = origen.where(origen != '', ('Evento: ' + evento).where(evento != '', '(sin actividad)'))
+    det['evento'] = evento
     det['programa'] = _categoria(det.programa, '(sin programa)')
     det['campana'] = _categoria(det.campana, '(sin campaña)', minusculas=True)
-    # Hitos que el lead tiene hoy en HubSpot: 1 contactado, 2 cita, 4 inscripción, 8 matrícula
-    det['hitos'] = sum(det[c].notna().astype(int) * b for c, b in
-                       [('fecha_contactado', 1), ('fecha_cita_total', 2), ('fecha_inscripcion', 4), ('fecha_ne', 8)])
+    det['fuente'] = (_limpio(det.utm_source, '') + ' / ' + _limpio(det.utm_medium, '')).str.strip(' /')
+    det['tipo'] = _categoria(det.tipo_lead, '(sin tipo)')
+    det['stock'] = _limpio(det.periodo_stock, '')
+    det['modalidad'] = _categoria(det.modalidad, '(sin modalidad)')
+    det['jornada'] = _categoria(det.jornada, '(sin jornada)')
+    for c, nuevo in [('fecha_contactado', 'contactado'), ('fecha_cita_total', 'cita'), ('fecha_inscripcion', 'inscripcion'), ('fecha_ne', 'ne')]:
+        det[nuevo] = _fecha_local(det[c])
     det['creado'] = pd.to_datetime(det.createdate, errors='coerce') - pd.Timedelta(hours=5)  # UTC -> Colombia
+    # Nombre del cliente: casi siempre viene en el nombre del negocio ("Programa | Nombre Apellido | +57...")
+    def nombre_de(negocio):
+        partes = [x.strip() for x in str(negocio or '').split('|')]
+        sin_num = [x for x in partes if x and not re.search(r'\d', x)]
+        if len(partes) >= 3 and partes[1] and not re.search(r'\d', partes[1]):
+            return partes[1]
+        return sin_num[-1] if sin_num else ''
+    nom = _limpio(det.p_nombre, '')
+    det['p_nombre'] = nom.where(nom != '', det.p_negocio.map(nombre_de))
     det['activo'] = ~det.pipeline.str.startswith('Archivo')
-    neg = indice.merge(det, on='id')
+
     # Un negocio por número: primero los activos, y entre ellos el más reciente
+    neg = indice.merge(det[['id', 'activo', 'creado']], on='id')
     neg = neg.sort_values(['activo', 'creado'], ascending=[False, False]).drop_duplicates('hash')
 
-    ll = llamadas[['t', 'f', 'user', 'c', 'customer number']].rename(columns={'customer number': 'hash'}).copy()
+    ll = llamadas[['t', 'f', 'h', 'ti', 'user', 'c', 'customer number']].rename(columns={'customer number': 'hash'}).copy()
     ll = ll.sort_values('t').reset_index(drop=True)
-    ll = ll.merge(neg[['hash', 'id', 'pipeline', 'etapa', 'canal', 'activador', 'actividad', 'programa', 'campana', 'hitos',
-                       'propietario', 'creado']], on='hash', how='left')
-    ll['en_crm'] = ll.pipeline.notna()
-    ll['hitos'] = ll.hitos.fillna(0).astype(int)
+    ll = ll.merge(neg[['hash', 'id']], on='hash', how='left')
+    ll['en_crm'] = ll.id.notna()
 
     # Propietaria: el nombre de HubSpot se muestra como en Aircall cuando es la misma asesora
     nombres = sorted(ll.user.unique())
     def dueno_visible(h):
-        if not isinstance(h, str):
-            return None
+        if not isinstance(h, str) or h == '(sin propietario)':
+            return h
         for a in nombres:
             if _misma_persona(a, h):
                 return a
         return h
-    duenos = {h: dueno_visible(h) for h in ll.propietario.dropna().unique()}
-    ll['dueno'] = ll.propietario.map(duenos)
+    det['dueno'] = det.propietario.map({h: dueno_visible(h) for h in det.propietario.unique()})
+
+    # Negocios con ficha en el panel: los de los pipelines del panel que se llamaron o que son leads nuevos
+    del_panel = det.pipeline.isin(PIPELINES_IDS.keys())
+    ids_ficha = (set(ll.id.dropna()) | set(leads.id)) & set(det[del_panel].id)
+    fichas = det[det.id.isin(ids_ficha)].sort_values('creado').reset_index(drop=True)
+    neg_i = {i: k for k, i in enumerate(fichas.id)}
+    ll = ll.merge(det[['id', 'pipeline', 'dueno', 'propietario', 'creado', 'etapa', 'canal']], on='id', how='left')
+    # neg: índice de la ficha; -1 = el número no está en el CRM; -2 = está, pero en otro pipeline
+    ll['neg'] = ll.id.map(neg_i)
+    ll.loc[ll.en_crm & ll.neg.isna(), 'neg'] = -2
+    ll['neg'] = ll.neg.fillna(-1).astype(int)
+
     ll['propia'] = -1
     ll.loc[ll.en_crm, 'propia'] = 0
     ll.loc[ll.en_crm & (ll.dueno == ll.user), 'propia'] = 1
@@ -315,56 +358,52 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, leads, numeros_
     ll.loc[primeras, 'tramo'] = pd.cut(horas, [-1, 1, 4, 24, 72, 1e9], labels=False, right=False).astype(int)
 
     ll['num'] = pd.factorize(ll.hash)[0]
-    dims = {}
-    def cod(col, vacio=-1):
-        vals = ll[col].dropna()
-        orden = vals.value_counts().index.tolist()
-        dims[col] = orden
-        m = {v: k for k, v in enumerate(orden)}
-        return ll[col].map(m).fillna(vacio).astype(int)
-    for col in ['pipeline', 'etapa', 'canal', 'activador', 'dueno', 'actividad', 'programa', 'campana']:
-        ll[col + '_i'] = cod(col)
-    ai = {a: k for k, a in enumerate(asesoras)}
-    ll['ai'] = ll.user.map(ai)
+    ll['ai'] = ll.user.map({a: k for k, a in enumerate(asesoras)})
     ll['ci'] = ll.c.map({'no': 0, 'auto': 1, 'efec': 2})
-    cols = ['f', 'ai', 'ci', 'num', 'pipeline_i', 'etapa_i', 'canal_i', 'activador_i', 'dueno_i', 'propia', 'tramo', 'actividad_i',
-            'programa_i', 'campana_i', 'hitos']
+    cols = ['f', 'h', 'ai', 'ci', 'ti', 'neg', 'num', 'propia', 'tramo']
     g = ll.groupby(cols).size().reset_index(name='n')
 
-    # Leads de los pipelines del panel que nadie ha llamado (ninguna llamada saliente al número)
-    lds = leads.copy()
-    lds['creado'] = pd.to_datetime(lds.createdate, errors='coerce') - pd.Timedelta(hours=5)
-    lds['etapa'] = _limpio(lds.etapa, '(sin etapa)')
-    lds['canal'] = _limpio(lds.canal, '(sin canal)')
-    lds['propietario'] = _limpio(lds.propietario, '(sin propietario)')
-    lds['dueno'] = lds.propietario.map(lambda h: dueno_visible(h) if h != '(sin propietario)' else h)
-    llamados = set(ll.hash)
+    # Fichas: categorías como índices a listas, fechas como texto
+    dims = {}
+    for col in ['pipeline', 'etapa', 'canal', 'activador', 'dueno', 'actividad', 'programa', 'campana', 'tipo', 'modalidad', 'jornada']:
+        orden = fichas[col].value_counts().index.tolist(); dims[col] = orden
+        fichas[col + '_i'] = fichas[col].map({v: k for k, v in enumerate(orden)})
+    fichas['fc'] = fichas.creado.dt.strftime('%Y-%m-%d %H:%M').fillna('')
+    fcols = ['id', 'pipeline_i', 'etapa_i', 'canal_i', 'activador_i', 'dueno_i', 'actividad_i', 'programa_i', 'campana_i',
+             'tipo_i', 'modalidad_i', 'jornada_i', 'fc', 'contactado', 'cita', 'inscripcion', 'ne', 'stock', 'evento', 'fuente']
+
+    # Leads de los pipelines del panel creados en la base: si alguien los ha llamado y si siguen abiertos
+    lds = leads[leads.id.isin(neg_i)].copy()
+    lds['neg'] = lds.id.map(neg_i)
+    lds['llamado'] = lds.hash.isin(set(ll.hash)).astype(int)
+    lds['abierto'] = (~fichas.etapa.iloc[lds.neg].isin(ETAPAS_CERRADAS).values).astype(int)
     lds['sin_tel'] = (lds.hash == '').astype(int)
-    lds['llamado'] = lds.hash.isin(llamados).astype(int)
-    lds['abierto'] = (~lds.etapa.isin(ETAPAS_CERRADAS)).astype(int)
-    lds['fc'] = lds.creado.dt.strftime('%Y-%m-%d')
-    ldims = {}
-    for col in ['pipeline', 'etapa', 'canal', 'dueno']:
-        orden = lds[col].value_counts().index.tolist(); ldims[col] = orden
-        lds[col + '_i'] = lds[col].map({v: k for k, v in enumerate(orden)})
-    lcols = ['fc', 'pipeline_i', 'etapa_i', 'canal_i', 'dueno_i', 'llamado', 'abierto', 'sin_tel']
-    lg = lds.groupby(lcols).size().reset_index(name='n')
+    lcols = ['neg', 'llamado', 'abierto', 'sin_tel']
 
     local = sincronizado - pd.Timedelta(hours=5)
     datos = {
         'sincronizado': local.strftime('%Y-%m-%d %H:%M'),
-        'columnas': cols + ['llamadas'],
-        'pipelines': dims['pipeline'], 'etapas': dims['etapa'], 'canales': dims['canal'],
-        'activadores': dims['activador'], 'duenos': dims['dueno'], 'actividades': dims['actividad'],
-        'programas': dims['programa'], 'campanas': dims['campana'],
+        'portal': str(portal or ''),
+        'columnas': cols + ['llamadas'], 'filas': g.values.tolist(),
+        'pipelines': dims['pipeline'], 'etapas': dims['etapa'], 'canales': dims['canal'], 'activadores': dims['activador'],
+        'duenos': dims['dueno'], 'actividades': dims['actividad'], 'programas': dims['programa'], 'campanas': dims['campana'],
+        'tipos': dims['tipo'], 'modalidades': dims['modalidad'], 'jornadas': dims['jornada'],
         'tramos': TRAMOS, 'cargas_masivas': sorted(str(d) for d in masivos if pd.Timestamp(d) >= INICIO_BASE),
-        'filas': g.values.tolist(),
-        'leads': {'columnas': lcols + ['leads'], 'pipelines': ldims['pipeline'], 'etapas': ldims['etapa'],
-                  'canales': ldims['canal'], 'duenos': ldims['dueno'], 'filas': lg.values.tolist()},
+        'negocios': {'columnas': fcols, 'filas': fichas[fcols].fillna('').values.tolist()},
+        'leads': {'columnas': lcols, 'filas': lds[lcols].values.tolist()},
     }
     with open(SALIDA, 'w', encoding='utf-8') as fh:
-        fh.write('/* Cruce de llamadas con el CRM, agregado. Sin teléfonos ni nombres de clientes. */\nwindow.CRM = ')
+        fh.write('/* Cruce de llamadas con el CRM. Sin teléfonos, nombres, cédulas ni correos de clientes. */\nwindow.CRM = ')
         fh.write(json.dumps(datos, ensure_ascii=False, separators=(',', ':')))
+        fh.write(';\n')
+
+    # Fichas con datos personales, por ID de negocio: SOLO en este computador (crm_privado.js está en .gitignore)
+    priv = {}
+    for r in fichas[['id'] + PRIVADAS].itertuples(index=False):
+        priv[r[0]] = [re.sub(r'\s+', ' ', str(v)).strip() if isinstance(v, str) else '' for v in r[1:]]
+    with open(PRIVADO, 'w', encoding='utf-8') as fh:
+        fh.write('/* DATOS PERSONALES. Solo para este computador: no subir a GitHub. */\nwindow.CRM_PRIVADO = ')
+        fh.write(json.dumps({'campos': PRIVADAS, 'fichas': priv}, ensure_ascii=False, separators=(',', ':')))
         fh.write(';\n')
 
     # Números que no aparecen: lista local con el número real (solo de los Excel cargados alguna vez)
@@ -378,8 +417,8 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, leads, numeros_
     no = no.drop(columns='hash').sort_values('ultima', ascending=False)
     no[['numero', 'llamadas', 'primera', 'ultima', 'asesoras']].to_csv(NO_ENCONTRADOS, index=False, encoding='utf-8-sig')
 
-    # Listas locales para trabajar en HubSpot (por ID de negocio; sin teléfonos ni nombres de clientes)
-    pend = lds[(lds.llamado == 0) & (lds.abierto == 1)].copy()
+    # Listas locales para trabajar en HubSpot (por ID de negocio)
+    pend = lds[(lds.llamado == 0) & (lds.abierto == 1)].merge(fichas[['id', 'pipeline', 'etapa', 'canal', 'propietario', 'creado']], on='id')
     pend['dias_esperando'] = (local.normalize() - pend.creado.dt.normalize()).dt.days
     pend['sin_telefono'] = pend.sin_tel.map({1: 'sí', 0: ''})
     pend.sort_values('creado')[['id', 'pipeline', 'etapa', 'canal', 'propietario', 'creado', 'dias_esperando', 'sin_telefono']] \
@@ -391,9 +430,10 @@ def construir(llamadas, asesoras, indice, detalle, sincronizado, leads, numeros_
                                                 asesoras=('user', lambda s: ', '.join(sorted(s.unique()))))
     sat = por_num[(por_num.llamadas >= SATURADO) & (por_num.conectadas == 0)].sort_values('llamadas', ascending=False)
     sat.drop(columns='conectadas').to_csv(LEADS_SATURADOS, index=False, encoding='utf-8-sig')
-    print(f'CRM: {len(pend)} leads abiertos sin ninguna llamada ({os.path.basename(LEADS_SIN_LLAMAR)}); '
-          f'{len(sat)} leads con {SATURADO}+ llamadas y ninguna conectada ({os.path.basename(LEADS_SATURADOS)}).')
+    print(f'CRM: {len(fichas)} fichas de negocio en el panel; {len(pend)} leads abiertos sin ninguna llamada '
+          f'({os.path.basename(LEADS_SIN_LLAMAR)}); {len(sat)} leads con {SATURADO}+ llamadas y ninguna conectada.')
 
     en = ll.en_crm.mean() if len(ll) else 0
     print(f'CRM: {ll.en_crm.sum()} de {len(ll)} llamadas salientes ({en:.1%}) van a números del CRM; '
-          f'{len(no)} números no aparecen (lista en {os.path.basename(NO_ENCONTRADOS)}) -> {SALIDA}')
+          f'{len(no)} números no aparecen (lista en {os.path.basename(NO_ENCONTRADOS)}) -> {SALIDA}; '
+          f'datos personales solo en {os.path.basename(PRIVADO)}')

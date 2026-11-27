@@ -97,7 +97,7 @@ function medir(rows) {
   }
   const div = (a, b) => b ? a / b : null;
   return {llamadas, conectadas, efectivas, no_conectadas: llamadas - conectadas, rellamadas, primeros, primer_contacto,
-    pct_conect: div(conectadas, llamadas), pct_no: div(llamadas - conectadas, llamadas), pct_efec: div(efectivas, conectadas),
+    pct_conect: div(conectadas, llamadas), pct_no: div(llamadas - conectadas, llamadas), pct_efec: div(efectivas, llamadas),  // efectivas totales: siempre sobre todas las llamadas
     efec_llamadas: div(efectivas, llamadas), pct_rellamadas: div(rellamadas, llamadas)};
 }
 function agrupar(rows, key) {
@@ -150,7 +150,7 @@ dash.calc('horas_s', {
 });
 dash.calc('franja_asesoras', {
   inputs: ['filtro'], title: 'Mejor franja por asesora',
-  description: 'Para cada asesora: la hora con más conectadas y la hora con mejor porcentaje de efectivas (solo horas con al menos 10 conectadas y el 5 % de sus conectadas).',
+  description: 'Para cada asesora: la hora con más conectadas y la hora con más efectivas totales (efectivas / llamadas; solo horas con al menos 10 conectadas y el 5 % de sus conectadas).',
   fn: (filtro) => [...agrupar(filtro.filter(r => r.direccion === 'Saliente'), 'asesora')].map(([a, rs]) => {
     const total = medir(rs);
     const horas = [...agrupar(rs, 'hora')].map(([h, hs]) => ({hora: String(h).padStart(2, '0') + ':00', ...medir(hs)}));
@@ -192,14 +192,14 @@ dash.calc('mapa_s', {
   }
 });
 dash.calc('mapa_mejor', {
-  inputs: ['mapa_s'], title: 'Mejor día y hora', description: 'Combinación de día y hora con mayor % de conectadas y con mayor % de efectividad total, entre las que tienen al menos 30 llamadas y el 1 % del total.',
+  inputs: ['mapa_s'], title: 'Mejor día y hora', description: 'Combinación de día y hora con mayor % de conectadas y con más efectivas totales, entre las que tienen al menos 30 llamadas y el 1 % del total.',
   fn: (mapa_s) => {
     const tot = mapa_s.reduce((s, c) => s + c.llamadas, 0), min = Math.max(30, tot * 0.01);
     const el = mapa_s.filter(c => c.llamadas >= min);
     const mejor = k => el.filter(c => c[k] != null).sort((a, b) => b[k] - a[k])[0];
-    const a = mejor('pct_conect'), b = mejor('efec_llamadas');
+    const a = mejor('pct_conect'), b = mejor('pct_efec');
     return [{celda_conect: a ? `${a.dia.toLowerCase()} a las ${a.hora}` : null, pct_conect: a ? a.pct_conect : null,
-      celda_efec: b ? `${b.dia.toLowerCase()} a las ${b.hora}` : null, efec_llamadas: b ? b.efec_llamadas : null}];
+      celda_efec: b ? `${b.dia.toLowerCase()} a las ${b.hora}` : null, efec_llamadas: b ? b.pct_efec : null}];
   }
 });
 dash.calc('base_cmp', {
@@ -228,7 +228,7 @@ const nombreSemana = (s, maxF) => `semana ${s} (${fCorto(inicioSemana(s))} – $
 function comparar(A, B, sinVolumen) {
   const o = {};
   for (const k of ['llamadas', 'conectadas', 'efectivas']) { o[k + '_a'] = A[k]; o[k + '_b'] = B[k]; o['cambio_' + k] = B[k] && !sinVolumen ? A[k] / B[k] - 1 : null; }
-  for (const k of ['pct_conect', 'pct_efec', 'efec_llamadas']) { o[k + '_a'] = A[k]; o[k + '_b'] = B[k]; o['cambio_' + k] = A[k] != null && B[k] != null ? A[k] - B[k] : null; }
+  for (const k of ['pct_conect', 'pct_efec']) { o[k + '_a'] = A[k]; o[k + '_b'] = B[k]; o['cambio_' + k] = A[k] != null && B[k] != null ? A[k] - B[k] : null; }
   return o;
 }
 dash.calc('cmp_kpi', {
@@ -484,12 +484,16 @@ dash.draw('cal', el => {
 });
 
 /* ---------- Pestañas ---------- */
-const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana', 'evolucion', 'crm'];
-let tabActual = TABS.includes((location.hash || '').slice(1)) ? location.hash.slice(1) : 'salientes';
+const TABS = ['salientes', 'no-conectadas', 'entrantes', 'por-hora', 'mapa-calor', 'rellamadas', 'semana-a-semana', 'evolucion', 'crm-pregrado', 'crm-posgrado'];
+const hashInicial = (location.hash || '').slice(1) === 'crm' ? 'crm-pregrado' : (location.hash || '').slice(1);  // enlaces viejos a #crm
+let tabActual = TABS.includes(hashInicial) ? hashInicial : 'salientes';
 function mostrar(id) {
   tabActual = id;
-  document.querySelectorAll('section.tab').forEach(s => { s.hidden = s.id !== id; });
+  // Las dos pestañas CRM usan la misma sección; cada una filtra su pipeline
+  const seccion = id.startsWith('crm-') ? 'crm' : id;
+  document.querySelectorAll('section.tab').forEach(s => { s.hidden = s.id !== seccion; });
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === id ? 'true' : 'false'));
+  if (seccion === 'crm') { const s = document.getElementById('crm'); if (s) s.setAttribute('aria-label', id === 'crm-posgrado' ? 'CRM posgrado' : 'CRM pregrado'); dash.setParams({}); }
   dash.setLink(id);
 }
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.tab)));
@@ -504,7 +508,7 @@ document.querySelectorAll('.pa table').forEach(tabla => {
   const nombre = tb.dataset.draw;
   tabla.querySelectorAll('th[aria-sort]').forEach(th => {
     const ordenar = () => {
-      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas', 'pipeline', 'canal', 'etapa', 'activador', 'dueno', 'tramo', 'actividad', 'grupo', 'en_aircall'].includes(k);
+      const k = th.dataset.field, texto = ['asesora', 'equipo', 'hora', 'intento', 'hora_conect', 'hora_efec', 'semana', 'fechas', 'pipeline', 'canal', 'etapa', 'activador', 'dueno', 'tramo', 'actividad', 'grupo', 'en_aircall', 'tipo'].includes(k);
       const actual = orden[nombre];
       const dir = actual && actual.k === k ? (actual.dir === 'desc' ? 'asc' : 'desc') : (texto ? 'asc' : 'desc');
       orden[nombre] = {k, dir};
@@ -543,6 +547,7 @@ function cuerpo(tb, id, cols) {
       if (etiquetas[i]) td.dataset.label = etiquetas[i];
       const num = document.createElement('span'); num.className = 'num'; num.textContent = r[k] == null ? '—' : f(r[k]); td.appendChild(num);
       if (conProm && typeof r[k] === 'number' && prom[i] != null && r[k] < prom[i] - 1e-9) td.classList.add('bajo');
+      if (i > 0 && window.crmMarcarClic) crmMarcarClic(td, r, k);  // pestañas CRM: la cifra abre la lista de leads
       tr.appendChild(td);
     });
     tb.appendChild(tr);
@@ -560,17 +565,17 @@ function cuerpo(tb, id, cols) {
   }
 }
 const S = String;
-dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
-dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
+dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
+dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
 dash.draw('t_nc', tb => cuerpo(tb, 'nc_asesora', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['no_conectadas', n0], ['pct_no', pc], ['sin_contestar', n0], ['no_disponible', n0], ['buzon', n0], ['solo_lp', n0], ['otras', n0]]));
-dash.draw('t_entrantes', tb => cuerpo(tb, 'asesoras_e', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_efec', pc]]));
-dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc]]));
+dash.draw('t_entrantes', tb => cuerpo(tb, 'asesoras_e', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
+dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
 dash.draw('t_franja', tb => cuerpo(tb, 'franja_asesoras', [['asesora', S], ['equipo', S, 'eq'], ['hora_conect', S], ['conectadas_hora', n0], ['hora_efec', S], ['pct_efec_hora', pc], ['pct_efec', pc]]));
 const flecha = v => v > 0 ? '▲ +' : v < 0 ? '▼ −' : '';
 const cambioPct = v => flecha(v) + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' %';
 const cambioPts = v => flecha(v) + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' pts';
 const claseCambio = v => v == null ? '' : v > 0 ? 'sube' : v < 0 ? 'baja' : '';
-dash.draw('t_semanas', tb => cuerpo(tb, 'semanas_s', [['semana', S], ['fechas', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc], ['cambio_llamadas', cambioPct, claseCambio], ['cambio_pct_conect', cambioPts, claseCambio], ['cambio_pct_efec', cambioPts, claseCambio]]));
+dash.draw('t_semanas', tb => cuerpo(tb, 'semanas_s', [['semana', S], ['fechas', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc], ['cambio_llamadas', cambioPct, claseCambio], ['cambio_pct_conect', cambioPts, claseCambio], ['cambio_pct_efec', cambioPts, claseCambio]]));
 const COLS_CMP = [['llamadas_a', n0], ['llamadas_b', n0], ['cambio_llamadas', v => cambioPct(v), claseCambio], ['pct_conect_a', pc], ['pct_conect_b', pc], ['cambio_pct_conect', v => cambioPts(v), claseCambio], ['pct_efec_a', pc], ['pct_efec_b', pc], ['cambio_pct_efec', v => cambioPts(v), claseCambio]];
 dash.draw('t_cmp_equipos', tb => cuerpo(tb, 'cmp_equipos', [['equipo', S], ...COLS_CMP]));
 dash.draw('t_cmp_asesoras', tb => cuerpo(tb, 'cmp_asesoras', [['asesora', S], ['equipo', S, 'eq'], ...COLS_CMP]));
@@ -599,7 +604,7 @@ dash.draw('ch_semanal', el => {
   el.replaceChildren();
   const A = PAL.acc, B = PAL.acc2;
   const gb = dash.data('base_cmp'); const sel = gb.status === 'ok' ? semanasElegidas(gb.data) : {};
-  leyenda(el, [{name: '% conectadas', color: B}, {name: '% efectivas sobre conectadas', color: A}]);
+  leyenda(el, [{name: '% conectadas', color: B}, {name: '% efectivas totales', color: A}]);
   const w = Math.max(el.clientWidth, 280), h = 240;
   const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).style('display', 'block').attr('role', 'img').attr('aria-label', 'Porcentaje de conectadas y de efectivas por semana');
   const y = d3.scaleLinear().domain([0, d3.max(rows, r => Math.max(r.pct_conect || 0, r.pct_efec || 0)) || 0.1]).nice(4);
@@ -620,9 +625,9 @@ dash.draw('ch_semanal', el => {
   rows.forEach(r => svg.append('text').attr('x', cx(r.semana)).attr('y', h - m.b + 17).attr('text-anchor', 'middle').style('fill', 'var(--cds-text-secondary)').style('font-size', '11px').text('S' + r.semana.split(' ')[1]));
   const tip = mkTip(el);
   rows.forEach(r => svg.append('rect').attr('x', x(r.semana)).attr('y', m.t).attr('width', x.bandwidth()).attr('height', h - m.b - m.t).style('fill', 'transparent')
-    .on('mousemove', ev => tip.show([`${r.semana} · ${r.fechas}`, `${n0(r.llamadas)} llamadas`, `Conectadas: ${pc(r.pct_conect)}`, `Efectivas: ${pc(r.pct_efec)}`], ev)).on('mouseleave', () => tip.hide()));
+    .on('mousemove', ev => tip.show([`${r.semana} · ${r.fechas}`, `${n0(r.llamadas)} llamadas`, `Conectadas: ${pc(r.pct_conect)}`, `% efectivas totales: ${pc(r.pct_efec)}`], ev)).on('mouseleave', () => tip.hide()));
 });
-dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['efec_llamadas', pc], ['primer_contacto', n0]]));
+dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc], ['primer_contacto', n0]]));
 
 /* ---------- Utilidades de gráficos ---------- */
 function filasDe(id, el) {
@@ -738,7 +743,7 @@ dash.draw('ch_tasas', el => {
   const rows = filasDe('diario_s', el); if (!rows) return;
   el.replaceChildren();
   const A = PAL.acc, B = PAL.acc2;
-  leyenda(el, [{name: '% conectadas', color: B}, {name: '% efectivas sobre conectadas', color: A}]);
+  leyenda(el, [{name: '% conectadas', color: B}, {name: '% efectivas totales', color: A}]);
   const w = Math.max(el.clientWidth, 280), h = 230;
   const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).style('display', 'block').attr('role', 'img').attr('aria-label', 'Porcentaje de conectadas y de efectivas por día');
   const vmax = d3.max(rows, r => Math.max(r.pct_conect || 0, r.pct_efec || 0)) || 0.1;
@@ -757,7 +762,7 @@ dash.draw('ch_tasas', el => {
   });
   const tip = mkTip(el);
   rows.forEach(r => svg.append('rect').attr('x', x(r.fecha)).attr('y', m.t).attr('width', x.bandwidth()).attr('height', h - m.b - m.t).style('fill', 'transparent')
-    .on('mousemove', ev => tip.show([fLargo(r.fecha), `Conectadas: ${pc(r.pct_conect)}`, `Efectivas sobre conectadas: ${pc(r.pct_efec)}`], ev)).on('mouseleave', () => tip.hide()));
+    .on('mousemove', ev => tip.show([fLargo(r.fecha), `Conectadas: ${pc(r.pct_conect)}`, `% efectivas totales: ${pc(r.pct_efec)}`], ev)).on('mouseleave', () => tip.hide()));
   ejeX(svg, x, dom, m, h, w);
 });
 dash.draw('ch_asesoras', el => {
@@ -765,8 +770,8 @@ dash.draw('ch_asesoras', el => {
   const A = PAL.acc;
   hbars(el, rows.slice().sort((a, b) => b.conectadas - a.conectadas).map(r => ({
     label: r.asesora, seg: [{v: r.efectivas, color: A, name: 'Efectivas'}, {v: r.conectadas - r.efectivas, color: MUT, name: 'Conectadas no efectivas'}],
-    text: `${n0(r.conectadas)} · ${pc(r.pct_efec)} efectivas`,
-    tip: [`${r.equipo}`, `${n0(r.llamadas)} llamadas`, `${n0(r.conectadas)} conectadas (${pc(r.pct_conect)})`, `${n0(r.efectivas)} efectivas (${pc(r.pct_efec)})`]
+    text: `${n0(r.conectadas)} · ${pc(r.pct_efec)} efectivas totales`,
+    tip: [`${r.equipo}`, `${n0(r.llamadas)} llamadas`, `${n0(r.conectadas)} conectadas (${pc(r.pct_conect)})`, `${n0(r.efectivas)} efectivas (${pc(r.pct_efec)} de las llamadas)`]
   })), {aria: 'Conectadas y efectivas por asesora', legend: [{name: 'Efectivas', color: A}, {name: 'Resto de las conectadas', color: MUT}]});
 });
 
@@ -798,7 +803,7 @@ dash.draw('ch_hora_efec', el => {
   const rows = filasDe('horas_s', el); if (!rows) return;
   const A = PAL.acc;
   vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), v: r.efectivas, text: n0(r.efectivas), color: A,
-    tip: [r.hora, `${n0(r.efectivas)} efectivas`, `${pc(r.pct_efec)} de las conectadas`]})), {aria: 'Llamadas efectivas por hora'});
+    tip: [r.hora, `${n0(r.efectivas)} efectivas`, `${pc(r.pct_efec)} de las llamadas (% efectivas totales)`]})), {aria: 'Llamadas efectivas por hora'});
 });
 dash.draw('ch_hora_conect_tot', el => {
   const rows = filasDe('horas_s', el); if (!rows) return;
@@ -808,14 +813,14 @@ dash.draw('ch_hora_conect_tot', el => {
 });
 dash.draw('ch_hora_efec_pct', el => {
   const rows = filasDe('horas_s', el); if (!rows) return;
-  const A = PAL.acc, tot = rows.reduce((s, r) => s + r.conectadas, 0);
-  const elegibles = rows.filter(r => r.conectadas >= tot * 0.05);
+  const A = PAL.acc, tot = rows.reduce((s, r) => s + r.llamadas, 0);
+  const elegibles = rows.filter(r => r.llamadas >= tot * 0.05);
   const mejor = elegibles.length ? d3.greatest(elegibles, r => r.pct_efec) : null;
-  vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), sub: n0(r.conectadas), v: r.pct_efec || 0, text: pc0(r.pct_efec), color: r === mejor ? A : MUT,
-    tip: [r.hora, `${n0(r.efectivas)} efectivas de ${n0(r.conectadas)} conectadas (${pc(r.pct_efec)})`, `${pc(r.efec_llamadas)} del total de llamadas`]})), {sub: true, aria: 'Porcentaje de efectivas por hora'});
+  vbars(el, rows.map(r => ({label: r.hora, short: r.hora.slice(0, 2), sub: n0(r.llamadas), v: r.pct_efec || 0, text: pc0(r.pct_efec), color: r === mejor ? A : MUT,
+    tip: [r.hora, `${n0(r.efectivas)} efectivas de ${n0(r.llamadas)} llamadas (${pc(r.pct_efec)})`]})), {sub: true, aria: 'Efectivas totales por hora'});
 });
 let mapaMetrica = 'pct_conect';
-const METRICAS = {pct_conect: {pct: true, base: 'llamadas'}, pct_efec: {pct: true, base: 'conectadas'}, efec_llamadas: {pct: true, base: 'llamadas'}, llamadas: {}, conectadas: {}, efectivas: {}};
+const METRICAS = {pct_conect: {pct: true, base: 'llamadas'}, pct_efec: {pct: true, base: 'llamadas'}, llamadas: {}, conectadas: {}, efectivas: {}};
 document.querySelectorAll('#seg-mapa button').forEach(b => b.addEventListener('click', () => {
   mapaMetrica = b.dataset.m;
   document.querySelectorAll('#seg-mapa button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
@@ -850,7 +855,7 @@ dash.draw('ch_mapa', el => {
       const rect = svg.append('rect').attr('x', cx + 1.5).attr('y', cy + 1.5).attr('width', Math.max(0, cw - 3)).attr('height', ch - 3).attr('rx', 4).style('fill', ok ? color(t) : '#f7f2e8');
       svg.append('text').attr('x', cx + cw / 2).attr('y', cy + ch / 2).attr('dy', '0.35em').attr('text-anchor', 'middle').style('pointer-events', 'none')
         .style('fill', ok && t > 0.55 ? '#fffdf8' : (ok ? '#2b2a33' : '#b3a995')).style('font-size', cw < 46 ? '10px' : '11px').style('font-variant-numeric', 'tabular-nums').text(ok ? fmt(r[k]) : (r ? '·' : ''));
-      if (r) rect.on('mousemove', ev => tip.show([`${DIAS[d]} · ${r.hora}`, `${n0(r.llamadas)} llamadas`, `${n0(r.conectadas)} conectadas (${pc(r.pct_conect)})`, `${n0(r.efectivas)} efectivas (${pc(r.pct_efec)} de conectadas)`, `Efectividad total: ${pc(r.efec_llamadas)}`], ev)).on('mouseleave', () => tip.hide());
+      if (r) rect.on('mousemove', ev => tip.show([`${DIAS[d]} · ${r.hora}`, `${n0(r.llamadas)} llamadas`, `${n0(r.conectadas)} conectadas (${pc(r.pct_conect)})`, `${n0(r.efectivas)} efectivas (% efectivas totales: ${pc(r.pct_efec)})`], ev)).on('mouseleave', () => tip.hide());
     });
   });
 });

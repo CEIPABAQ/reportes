@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
 <div class="pa-fondo">
@@ -85,7 +85,8 @@
     <button type="button" role="tab" data-tab="rellamadas" aria-selected="false">Rellamadas</button>
     <button type="button" role="tab" data-tab="semana-a-semana" aria-selected="false">Semana a semana</button>
     <button type="button" role="tab" data-tab="evolucion" aria-selected="false">Rendimiento</button>
-    <button type="button" role="tab" data-tab="crm" aria-selected="false">CRM</button>
+    <button type="button" role="tab" data-tab="crm-pregrado" aria-selected="false">CRM pregrado</button>
+    <button type="button" role="tab" data-tab="crm-posgrado" aria-selected="false">CRM posgrado</button>
   </div>
 
   <!-- SALIENTES -->
@@ -94,7 +95,7 @@
     <div class="cards">
       <div class="card"><span class="k">Llamadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="llamadas" data-row="0">—</span><span class="s">Salientes del periodo</span></div>
       <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_s" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_conect" data-row="0">—</b> de las llamadas</span></div>
-      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_s" data-field="efectivas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_s" data-field="pct_efec" data-row="0">—</b> de las conectadas · <b data-draw="p" data-source="kpi_s" data-field="efec_llamadas" data-row="0">—</b> del total de llamadas</span></div>
+      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_s" data-field="efectivas" data-row="0">—</span><span class="s">% efectivas totales: <b data-draw="p" data-source="kpi_s" data-field="pct_efec" data-row="0">—</b> de las llamadas</span></div>
     </div>
 
     <div class="duo">
@@ -116,10 +117,9 @@
             <th data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
             <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
-            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_equipos"></tbody>
         </table>
@@ -137,10 +137,9 @@
             <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
             <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
-            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_asesoras"></tbody>
         </table>
@@ -190,7 +189,7 @@
     <div class="cards">
       <div class="card"><span class="k">Entrantes</span><span class="v" data-draw="n" data-source="kpi_e" data-field="llamadas" data-row="0">—</span><span class="s">Llamadas que entraron</span></div>
       <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="kpi_e" data-field="conectadas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_e" data-field="pct_conect" data-row="0">—</b> de las entrantes</span></div>
-      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_e" data-field="efectivas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="kpi_e" data-field="pct_efec" data-row="0">—</b> de las conectadas</span></div>
+      <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-accent data-source="kpi_e" data-field="efectivas" data-row="0">—</span><span class="s">% efectivas totales: <b data-draw="p" data-source="kpi_e" data-field="pct_efec" data-row="0">—</b> de las llamadas</span></div>
     </div>
     <div id="e-asesoras">
       <h2>Por asesora</h2>
@@ -202,8 +201,9 @@
             <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
             <th data-field="llamadas" aria-sort="none" tabindex="0">Entrantes</th>
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
+            <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
             <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_entrantes"></tbody>
         </table>
@@ -246,10 +246,9 @@
           <th data-field="hora" aria-sort="none" tabindex="0">Hora</th>
           <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
           <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-          <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
           <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-          <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
-            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
+          <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+          <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
         </tr></thead>
         <tbody data-draw="t_horas"></tbody>
       </table>
@@ -264,32 +263,31 @@
             <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
             <th data-field="hora_conect" aria-sort="none" tabindex="0">Hora con más conectadas</th>
             <th data-field="conectadas_hora" aria-sort="none" tabindex="0">Conectadas en esa hora</th>
-            <th data-field="hora_efec" aria-sort="none" tabindex="0">Hora con mejor % efectivas</th>
-            <th data-field="pct_efec_hora" aria-sort="none" tabindex="0">% efectivas en esa hora</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas general</th>
+            <th data-field="hora_efec" aria-sort="none" tabindex="0">Hora con mayor % efectivas totales</th>
+            <th data-field="pct_efec_hora" aria-sort="none" tabindex="0">% efectivas totales en esa hora</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales general</th>
           </tr></thead>
           <tbody data-draw="t_franja"></tbody>
         </table>
       </div>
-      <p class="cap">Para la mejor hora por % de efectivas solo cuentan las horas con al menos 10 conectadas y al menos el 5 % de las conectadas de la asesora, para que una hora con pocas llamadas no salga como la mejor por azar.</p>
+      <p class="cap">Para la hora con más efectivas totales solo cuentan las horas con al menos 10 conectadas y al menos el 5 % de las conectadas de la asesora, para que una hora con pocas llamadas no salga como la mejor por azar.</p>
     </div>
   </section>
 
   <!-- MAPA DE CALOR -->
   <section class="tab" id="mapa-calor" role="tabpanel" aria-label="Mapa de calor" hidden>
-    <p class="say">Entre las combinaciones con suficientes llamadas, la mejor para conectar fue el <b data-draw="tx" data-source="mapa_mejor" data-field="celda_conect" data-row="0">—</b>, con <b data-draw="p" data-source="mapa_mejor" data-field="pct_conect" data-row="0">—</b> de conectadas. La de mayor efectividad total fue el <b data-draw="tx" data-source="mapa_mejor" data-field="celda_efec" data-row="0">—</b>, donde el <b data-draw="p" data-source="mapa_mejor" data-field="efec_llamadas" data-row="0">—</b> de las llamadas terminó en efectiva.</p>
+    <p class="say">Entre las combinaciones con suficientes llamadas, la mejor para conectar fue el <b data-draw="tx" data-source="mapa_mejor" data-field="celda_conect" data-row="0">—</b>, con <b data-draw="p" data-source="mapa_mejor" data-field="pct_conect" data-row="0">—</b> de conectadas. La de más efectivas totales fue el <b data-draw="tx" data-source="mapa_mejor" data-field="celda_efec" data-row="0">—</b>, donde el <b data-draw="p" data-source="mapa_mejor" data-field="efec_llamadas" data-row="0">—</b> de las llamadas terminó en efectiva.</p>
     <div id="mapa">
       <h2>Día de la semana y hora</h2>
       <div class="seg" id="seg-mapa" role="group" aria-label="Qué mostrar en el mapa">
         <button type="button" data-m="pct_conect" aria-pressed="true">% conectadas</button>
-        <button type="button" data-m="pct_efec" aria-pressed="false">% efectivas</button>
-        <button type="button" data-m="efec_llamadas" aria-pressed="false">% efectividad total</button>
+        <button type="button" data-m="pct_efec" aria-pressed="false">% efectivas totales</button>
         <button type="button" data-m="llamadas" aria-pressed="false">Llamadas</button>
         <button type="button" data-m="conectadas" aria-pressed="false">Conectadas</button>
         <button type="button" data-m="efectivas" aria-pressed="false">Efectivas</button>
       </div>
       <div class="chart" data-draw="ch_mapa" data-source="mapa_s" role="img" aria-label="Mapa de calor por día de la semana y hora" style="margin-top:var(--cds-gap-md)">—</div>
-      <p class="cap">Entre más oscura la celda, mejor resultado. En los porcentajes solo se colorean las celdas con al menos 20 llamadas (o 20 conectadas para % efectivas); las demás aparecen con un punto. Pasa el cursor por una celda para ver el detalle.</p>
+      <p class="cap">Entre más oscura la celda, mejor resultado. En los porcentajes solo se colorean las celdas con al menos 20 llamadas; las demás aparecen con un punto. Pasa el cursor por una celda para ver el detalle.</p>
     </div>
   </section>
 
@@ -318,10 +316,9 @@
           <th data-field="intento" aria-sort="none" tabindex="0">Intento al número</th>
           <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
           <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-          <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
           <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-          <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
-            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
+          <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+          <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
           <th data-field="primer_contacto" aria-sort="none" tabindex="0">Primer contacto logrado</th>
         </tr></thead>
         <tbody data-draw="t_intentos"></tbody>
@@ -344,8 +341,7 @@
       <div class="card"><span class="k">Conectadas</span><span class="v" data-draw="n" data-source="cmp_kpi" data-field="conectadas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="n" data-source="cmp_kpi" data-field="conectadas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pct" data-source="cmp_kpi" data-field="cambio_conectadas" data-row="0">—</span></span></div>
       <div class="card"><span class="k">Efectivas</span><span class="v" data-draw="n" data-source="cmp_kpi" data-field="efectivas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="n" data-source="cmp_kpi" data-field="efectivas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pct" data-source="cmp_kpi" data-field="cambio_efectivas" data-row="0">—</span></span></div>
       <div class="card"><span class="k">% conectadas</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="pct_conect_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="pct_conect_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_pct_conect" data-row="0">—</span></span></div>
-      <div class="card"><span class="k">% efectivas</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="pct_efec_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="pct_efec_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_pct_efec" data-row="0">—</span></span></div>
-      <div class="card"><span class="k">% efectividad total</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="efec_llamadas_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="efec_llamadas_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_efec_llamadas" data-row="0">—</span></span></div>
+      <div class="card"><span class="k">% efectivas totales</span><span class="v" data-draw="p" data-source="cmp_kpi" data-field="pct_efec_a" data-row="0">—</span><span class="s">Comparada: <b data-draw="p" data-source="cmp_kpi" data-field="pct_efec_b" data-row="0">—</b> · <span data-draw="delta" data-kind="pts" data-source="cmp_kpi" data-field="cambio_pct_efec" data-row="0">—</span></span></div>
     </div>
     <div id="cmp-equipos">
       <h2>Por equipo</h2>
@@ -359,9 +355,9 @@
             <th data-field="pct_conect_a" aria-sort="none" tabindex="0">% conectadas actual</th>
             <th data-field="pct_conect_b" aria-sort="none" tabindex="0">% conectadas comparada</th>
             <th data-field="cambio_pct_conect" aria-sort="none" tabindex="0">Cambio % conectadas</th>
-            <th data-field="pct_efec_a" aria-sort="none" tabindex="0">% efectivas actual</th>
-            <th data-field="pct_efec_b" aria-sort="none" tabindex="0">% efectivas comparada</th>
-            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas</th>
+            <th data-field="pct_efec_a" aria-sort="none" tabindex="0">% efectivas totales actual</th>
+            <th data-field="pct_efec_b" aria-sort="none" tabindex="0">% efectivas totales comparada</th>
+            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_cmp_equipos"></tbody>
         </table>
@@ -380,9 +376,9 @@
             <th data-field="pct_conect_a" aria-sort="none" tabindex="0">% conectadas actual</th>
             <th data-field="pct_conect_b" aria-sort="none" tabindex="0">% conectadas comparada</th>
             <th data-field="cambio_pct_conect" aria-sort="none" tabindex="0">Cambio % conectadas</th>
-            <th data-field="pct_efec_a" aria-sort="none" tabindex="0">% efectivas actual</th>
-            <th data-field="pct_efec_b" aria-sort="none" tabindex="0">% efectivas comparada</th>
-            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas</th>
+            <th data-field="pct_efec_a" aria-sort="none" tabindex="0">% efectivas totales actual</th>
+            <th data-field="pct_efec_b" aria-sort="none" tabindex="0">% efectivas totales comparada</th>
+            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_cmp_asesoras"></tbody>
         </table>
@@ -390,7 +386,7 @@
       <p class="cap">"Actual" es la semana elegida arriba y "comparada" la del segundo renglón. En llamadas el cambio es porcentual; en los porcentajes, la diferencia en puntos. Si una de las dos semanas está en curso, no se compara el volumen.</p>
     </div>
     <div id="g-semanal">
-      <h2>% conectadas y % efectivas por semana</h2>
+      <h2>% conectadas y % efectivas totales por semana</h2>
       <div class="chart" data-draw="ch_semanal" data-source="semanas_s" role="img" aria-label="Porcentaje de conectadas y de efectivas por semana">—</div>
     </div>
     <div id="semanas">
@@ -403,13 +399,12 @@
             <th class="eq" data-field="fechas" aria-sort="none" tabindex="0">Fechas</th>
             <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
-            <th data-field="efec_llamadas" aria-sort="none" tabindex="0">% efectividad total</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
             <th data-field="cambio_llamadas" aria-sort="none" tabindex="0">Cambio llamadas</th>
             <th data-field="cambio_pct_conect" aria-sort="none" tabindex="0">Cambio % conectadas</th>
-            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas</th>
+            <th data-field="cambio_pct_efec" aria-sort="none" tabindex="0">Cambio % efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_semanas"></tbody>
         </table>
@@ -464,20 +459,29 @@
   </section>
 
   <!-- CRM -->
-  <section class="tab" id="crm" role="tabpanel" aria-label="CRM" hidden>
-    <p class="say">Cruce de las llamadas salientes con el CRM (HubSpot). Cada número llamado se busca en el CRM con cualquier formato del teléfono, y se muestra cómo está su negocio <b>hoy</b>, aunque la llamada sea de días pasados. Solo se muestran los pipelines <b>Pregrado Barranquilla</b> y <b>Especializaciones</b>, y los números que no aparecen en el CRM. No se muestran teléfonos ni nombres de clientes. <span data-draw="crm_sync">—</span> <span data-draw="crm_otros"></span></p>
+  <section class="tab" id="crm" role="tabpanel" aria-label="CRM pregrado" hidden>
+    <p class="say">Cruce de las llamadas salientes con el CRM (HubSpot) para el pipeline <b data-draw="crm_pipe_nombre">—</b>. Cada número llamado se busca en el CRM con cualquier formato del teléfono, y se muestra cómo está su negocio <b>hoy</b>, aunque la llamada sea de días pasados. Los números que no aparecen en el CRM se cuentan con el equipo de <span data-draw="crm_equipo_nombre">—</span>. <span data-draw="crm_sync">—</span> <span data-draw="crm_otros"></span></p>
+    <p class="nota-clic" data-draw="crm_privado_aviso">—</p>
+    <div class="filtros-crm" role="group" aria-label="Filtros del CRM">
+      <div class="seg-fila"><span>Tipo de lead</span><div class="seg" id="seg-tipo" role="group" aria-label="Tipo de lead">
+        <button type="button" data-tipo="" aria-pressed="true">Todos</button>
+        <button type="button" data-tipo="Flow" aria-pressed="false">Flow</button>
+        <button type="button" data-tipo="Stock" aria-pressed="false">Stock</button>
+      </div></div>
+      <div class="seg-fila"><span>Canal</span><select id="sel-canal" class="btn" data-draw="crm_canal_opciones" aria-label="Canal"><option value="">Todos los canales</option></select></div>
+    </div>
     <label class="resalte"><input type="checkbox" checked data-resalte> <i aria-hidden="true"></i> Resaltar cifras por debajo del promedio</label>
     <div class="cards">
-      <div class="card"><span class="k">Llamadas a Pregrado BQA y Especializaciones</span><span class="v" data-draw="p" data-accent data-source="crm_kpi" data-field="pct_en_crm" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_kpi" data-field="en_crm" data-row="0">—</b> de <b data-draw="n" data-source="crm_kpi" data-field="llamadas" data-row="0">—</b> llamadas salientes</span></div>
-      <div class="card"><span class="k">Leads llamados</span><span class="v" data-draw="n" data-source="crm_kpi" data-field="numeros_crm" data-row="0">—</span><span class="s">de estos dos pipelines · <b data-draw="n" data-source="crm_kpi" data-field="numeros_no" data-row="0">—</b> números no aparecen en el CRM</span></div>
+      <div class="card"><span class="k">Llamadas a este pipeline</span><span class="v" data-draw="p" data-accent data-source="crm_kpi" data-field="pct_en_crm" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_kpi" data-field="en_crm" data-row="0">—</b> de <b data-draw="n" data-source="crm_kpi" data-field="llamadas" data-row="0">—</b> llamadas salientes</span></div>
+      <div class="card"><span class="k">Leads llamados</span><span class="v" data-draw="n" data-source="crm_kpi" data-field="numeros_crm" data-row="0">—</span><span class="s">de este pipeline · <b data-draw="n" data-source="crm_kpi" data-field="numeros_no" data-row="0">—</b> números no aparecen en el CRM</span></div>
       <div class="card"><span class="k">Llamadas a leads propios</span><span class="v" data-draw="p" data-source="crm_kpi" data-field="pct_propias" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_kpi" data-field="propias" data-row="0">—</b> a sus leads · <b data-draw="n" data-source="crm_kpi" data-field="ajenas" data-row="0">—</b> a leads de otra persona · <b data-draw="n" data-source="crm_kpi" data-field="sin_dueno" data-row="0">—</b> sin propietario</span></div>
-      <div class="card"><span class="k">Leads con activador</span><span class="v" data-draw="n" data-source="crm_kpi" data-field="numeros_activador" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_kpi" data-field="pct_activador" data-row="0">—</b> de los números que están en el CRM</span></div>
+      <div class="card"><span class="k">Leads con activador</span><span class="v" data-draw="n" data-source="crm_kpi" data-field="numeros_activador" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_kpi" data-field="pct_activador" data-row="0">—</b> de los leads llamados</span></div>
     </div>
 
     <div class="duo">
-      <div id="g-crm-pipelines">
-        <h3>¿A qué pipelines se está llamando?</h3>
-        <div class="chart" data-draw="ch_crm_pipelines" data-source="crm_pipelines" role="img" aria-label="Llamadas por pipeline">—</div>
+      <div id="g-crm-tipos">
+        <h3>¿Flow o stock?</h3>
+        <div class="chart" data-draw="ch_crm_tipos" data-source="crm_tipos" role="img" aria-label="Llamadas por tipo de lead">—</div>
       </div>
       <div id="g-crm-canales">
         <h3>¿De qué canal vienen los leads?</h3>
@@ -485,20 +489,21 @@
       </div>
     </div>
 
-    <div id="crm-pipelines">
-      <h2>Por pipeline</h2>
+    <div id="crm-tipos">
+      <h2>Por tipo de lead</h2>
+      <p class="say">Flow son los leads nuevos del periodo; stock, los de bases anteriores que se vuelven a trabajar (propiedad <i>Tipo de lead</i> de HubSpot).</p>
       <div class="tw">
-        <table class="ancha" data-source="crm_pipelines" data-row-key="pipeline">
+        <table class="ancha" data-source="crm_tipos" data-row-key="tipo">
           <thead><tr>
-            <th data-field="pipeline" aria-sort="none" tabindex="0">Pipeline</th>
-            <th data-field="numeros" aria-sort="none" tabindex="0">Números</th>
+            <th data-field="tipo" aria-sort="none" tabindex="0">Tipo de lead</th>
+            <th data-field="numeros" aria-sort="none" tabindex="0">Leads</th>
             <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
           </tr></thead>
-          <tbody data-draw="t_crm_pipelines"></tbody>
+          <tbody data-draw="t_crm_tipos"></tbody>
         </table>
       </div>
       <p class="cap">Si un número tiene varios negocios, se toma el de un pipeline activo y, entre ellos, el más reciente.</p>
@@ -516,7 +521,7 @@
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
             <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
-            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
           </tr></thead>
           <tbody data-draw="t_crm_etapas"></tbody>
         </table>
@@ -525,7 +530,7 @@
 
     <div id="crm-activador">
       <h2>¿Quién subió los leads? (activador)</h2>
-      <p class="say">La propiedad <i>Activador (n)</i> de HubSpot. Suele estar llena en los leads que se cargan a mano (Empresas, Encadenamiento, eventos); los que llegan por formulario de Internet no la tienen. Haz clic en un nombre para ver de qué actividad vinieron sus leads: la propiedad <i>Origen del lead (n)</i> (Stand, Charla presencial, Ferias, Webinars…). Si no tiene origen pero sí un curso o webinar, cuenta como "Evento"; las actividades con menos de 5 leads se suman en "Otras".</p>
+      <p class="say">La propiedad <i>Activador (n)</i> de HubSpot. Suele estar llena en los leads que se cargan a mano (Empresas, Encadenamiento, eventos); los que llegan por formulario de Internet no la tienen. Solo se muestran las activadoras Maria Pacheco, Alison Villalba, Yeilen Guerrero, Katherin Garay y María José Ardila. Haz clic en un nombre para ver de qué actividad vinieron sus leads: la propiedad <i>Origen del lead (n)</i> (Stand, Charla presencial, Ferias, Webinars…). Si no tiene origen pero sí un curso o webinar, cuenta como "Evento"; las actividades con menos de 5 leads se suman en "Otras".</p>
       <div class="tw">
         <table class="ancha agrupada" data-source="crm_activador_grupos" data-row-key="activador">
           <thead><tr>
@@ -535,43 +540,10 @@
             <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
             <th data-field="pct_conect" aria-sort="none" tabindex="0">% conectadas</th>
             <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
+            <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
             <th data-field="pct_propias" aria-sort="none" tabindex="0">% llamadas por la dueña</th>
           </tr></thead>
           <tbody data-draw="t_crm_activadores"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="crm-propietaria">
-      <h2>¿Quién llama es la dueña del negocio en HubSpot?</h2>
-      <p class="say">Compara la asesora que hizo la llamada en Aircall con la propietaria del negocio en HubSpot. Una llamada a un lead "de otra persona" puede ser un apoyo acordado o una asignación que no se ha actualizado en HubSpot.</p>
-      <div class="tw">
-        <table class="ancha" data-source="crm_propia" data-row-key="asesora">
-          <thead><tr>
-            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora que llama</th>
-            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
-            <th data-field="en_crm" aria-sort="none" tabindex="0">Llamadas a leads del CRM</th>
-            <th data-field="propias" aria-sort="none" tabindex="0">A sus leads</th>
-            <th data-field="ajenas" aria-sort="none" tabindex="0">A leads de otra persona</th>
-            <th data-field="sin_dueno" aria-sort="none" tabindex="0">Sin propietario</th>
-            <th data-field="pct_propias" aria-sort="none" tabindex="0">% a sus leads</th>
-          </tr></thead>
-          <tbody data-draw="t_crm_propia"></tbody>
-        </table>
-      </div>
-      <h3 style="margin-top:var(--cds-gap-lg)">Resumen: leads de otra persona que llamó cada asesora</h3>
-      <div class="tw">
-        <table class="ancha" data-source="crm_ajenas" data-row-key="asesora">
-          <thead><tr>
-            <th data-field="asesora" aria-sort="none" tabindex="0">Asesora que llama</th>
-            <th class="eq" data-field="equipo" aria-sort="none" tabindex="0">Equipo</th>
-            <th data-field="numeros" aria-sort="none" tabindex="0">Números de otra propietaria</th>
-            <th data-field="llamadas" aria-sort="none" tabindex="0">Llamadas</th>
-            <th data-field="duenas" aria-sort="none" tabindex="0">Propietarias distintas</th>
-            <th data-field="conectadas" aria-sort="none" tabindex="0">Conectadas</th>
-            <th data-field="efectivas" aria-sort="none" tabindex="0">Efectivas</th>
-          </tr></thead>
-          <tbody data-draw="t_crm_ajenas"></tbody>
         </table>
       </div>
     </div>
@@ -585,9 +557,10 @@
         <button type="button" data-por="activador" aria-pressed="false">Activador</button>
         <button type="button" data-por="programa" aria-pressed="false">Programa académico</button>
         <button type="button" data-por="campana" aria-pressed="false">Campaña (Internet)</button>
+        <button type="button" data-por="tipo" aria-pressed="false">Tipo de lead</button>
       </div></div>
       <div class="cards seis">
-        <div class="card"><span class="k">Leads llamados</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="leads" data-row="0">—</span><span class="s">de los dos pipelines</span></div>
+        <div class="card"><span class="k">Leads llamados</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="leads" data-row="0">—</span><span class="s">de este pipeline</span></div>
         <div class="card"><span class="k">Contactados</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="contactados" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_resultado_kpi" data-field="pct_contactados" data-row="0">—</b> de los llamados</span></div>
         <div class="card"><span class="k">Con cita</span><span class="v" data-draw="n" data-accent data-source="crm_resultado_kpi" data-field="citas" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_resultado_kpi" data-field="pct_citas" data-row="0">—</b> de los llamados</span></div>
         <div class="card"><span class="k">Inscritos</span><span class="v" data-draw="n" data-source="crm_resultado_kpi" data-field="inscritos" data-row="0">—</span><span class="s"><b data-draw="p" data-source="crm_resultado_kpi" data-field="pct_inscritos" data-row="0">—</b> de los llamados</span></div>
@@ -617,9 +590,9 @@
 
     <div id="crm-sin-llamar">
       <h2>Leads que nadie ha llamado</h2>
-      <p class="say">Leads de Pregrado Barranquilla y Especializaciones creados en el periodo elegido (por fecha de creación en HubSpot) y su cobertura: cuántos han recibido al menos una llamada en Aircall. Los "pendientes" están en una etapa abierta y nunca se han llamado. Aquí los filtros de equipo y asesora se aplican a la propietaria del lead.</p>
+      <p class="say">Leads del pipeline creados en el periodo elegido (por fecha de creación en HubSpot) y su cobertura: cuántos han recibido al menos una llamada en Aircall. Los "pendientes" están en una etapa abierta y nunca se han llamado. Aquí los filtros de equipo y asesora se aplican a la propietaria del lead.</p>
       <div class="cards">
-        <div class="card"><span class="k">Leads creados</span><span class="v" data-draw="n" data-source="crm_leads_kpi" data-field="leads" data-row="0">—</span><span class="s">en el periodo, en los dos pipelines</span></div>
+        <div class="card"><span class="k">Leads creados</span><span class="v" data-draw="n" data-source="crm_leads_kpi" data-field="leads" data-row="0">—</span><span class="s">en el periodo, en este pipeline</span></div>
         <div class="card"><span class="k">Con al menos una llamada</span><span class="v" data-draw="p" data-accent data-source="crm_leads_kpi" data-field="pct_llamados" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_leads_kpi" data-field="llamados" data-row="0">—</b> leads llamados</span></div>
         <div class="card"><span class="k">Pendientes sin llamar</span><span class="v" data-draw="n" data-source="crm_leads_kpi" data-field="pendientes" data-row="0">—</span><span class="s"><b data-draw="n" data-source="crm_leads_kpi" data-field="viejos" data-row="0">—</b> llevan más de 3 días</span></div>
       </div>
@@ -681,7 +654,7 @@
                 <th data-field="leads" aria-sort="none" tabindex="0">Leads</th>
                 <th data-field="pct_leads" aria-sort="none" tabindex="0">% de los leads</th>
                 <th data-field="pct_conect" aria-sort="none" tabindex="0">% contestó</th>
-                <th data-field="pct_efec_total" aria-sort="none" tabindex="0">% efectiva</th>
+                <th data-field="pct_efec" aria-sort="none" tabindex="0">% efectivas totales</th>
               </tr></thead>
               <tbody data-draw="t_crm_velocidad"></tbody>
             </table>
@@ -709,11 +682,34 @@
     </div>
   </section>
 
+  <dialog id="ficha" class="ficha" aria-labelledby="ficha-titulo">
+    <div class="f-cab">
+      <div>
+        <p class="f-contexto">—</p>
+        <h2 class="f-titulo" id="ficha-titulo">—</h2>
+        <p class="f-sub">—</p>
+      </div>
+      <button type="button" class="btn f-cerrar">Cerrar</button>
+    </div>
+    <div class="f-herr">
+      <input type="search" class="btn f-buscar" placeholder="Buscar por nombre, cédula, celular, programa o ID del negocio" aria-label="Buscar lead">
+      <button type="button" class="btn f-csv">Descargar CSV</button>
+    </div>
+    <div class="f-chips seg" role="group" aria-label="Filtrar la lista"></div>
+    <div class="tw f-tabla">
+      <table class="ancha">
+        <thead><tr><th>Lead</th><th>Programa</th><th>Etapa hoy</th><th>Canal</th><th>Propietaria</th><th>Llamadas</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="f-mas"></div>
+  </dialog>
+
   <details id="definiciones">
     <summary>Cómo se clasifica cada llamada</summary>
     <p><b>Conectada:</b> Aircall registró la llamada como contestada (answered = Yes). Incluye buzón, mensajes de la operadora y llamadas cortadas.</p>
     <p><b>Efectiva:</b> conectada y con cualquier etiqueta que diga "Contactado", incluidas "Contactado no puede hablar" y "Contactado Mensaje con familiar/conocido", sin importar la duración.</p>
-    <p><b>Porcentajes:</b> % conectadas = conectadas / llamadas. % efectivas = efectivas / conectadas. % efectividad total = efectivas / llamadas.</p>
+    <p><b>Porcentajes:</b> % conectadas = conectadas / llamadas. % efectivas totales = efectivas / llamadas (siempre sobre todas las llamadas, no solo las conectadas).</p>
     <p><b>Entrantes:</b> toda llamada entrante conectada cuenta como efectiva.</p>
     <p><b>Semanas:</b> de lunes a domingo; la semana 1 empieza el 12 de octubre. <b>Núcleos:</b> periodos de dos meses; el núcleo 1 va del 12 de octubre al 11 de diciembre.</p>
     <p><b>Tablas:</b> la última fila es el promedio simple de las filas que se ven con los filtros aplicados; las cifras por debajo de ese promedio se marcan en rosa; el resaltado se puede apagar con la casilla de cada pestaña, y cada pestaña se maneja por separado.</p>
@@ -726,9 +722,10 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-<script src="datos.js?v=7"></script>
-<script src="crm.js?v=7"></script>
-<script src="app.js?v=7"></script>
-<script src="crm_panel.js?v=7"></script>
+<script src="datos.js?v=13"></script>
+<script src="crm.js?v=13"></script>
+<script>if (!/github\.io$/.test(location.hostname)) document.write('<script src="crm_privado.js?v=13" onerror="this.remove()"><\/script>');</script>
+<script src="app.js?v=13"></script>
+<script src="crm_panel.js?v=13"></script>
 </body>
 </html>
