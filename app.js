@@ -565,17 +565,17 @@ function cuerpo(tb, id, cols) {
   }
 }
 const S = String;
-dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
-dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
+dash.draw('t_equipos', tb => cuerpo(tb, 'equipos_s', [['equipo', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
+dash.draw('t_asesoras', tb => cuerpo(tb, 'asesoras_s', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
 dash.draw('t_nc', tb => cuerpo(tb, 'nc_asesora', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['no_conectadas', n0], ['pct_no', pc], ['sin_contestar', n0], ['no_disponible', n0], ['buzon', n0], ['solo_lp', n0], ['otras', n0]]));
-dash.draw('t_entrantes', tb => cuerpo(tb, 'asesoras_e', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
-dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
+dash.draw('t_entrantes', tb => cuerpo(tb, 'asesoras_e', [['asesora', S], ['equipo', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
+dash.draw('t_horas', tb => cuerpo(tb, 'horas_s', [['hora', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
 dash.draw('t_franja', tb => cuerpo(tb, 'franja_asesoras', [['asesora', S], ['equipo', S, 'eq'], ['hora_conect', S], ['conectadas_hora', n0], ['hora_efec', S], ['pct_efec_hora', pc], ['pct_efec', pc]]));
 const flecha = v => v > 0 ? '▲ +' : v < 0 ? '▼ −' : '';
 const cambioPct = v => flecha(v) + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' %';
 const cambioPts = v => flecha(v) + (Math.abs(v) * 100).toFixed(1).replace('.', ',') + ' pts';
 const claseCambio = v => v == null ? '' : v > 0 ? 'sube' : v < 0 ? 'baja' : '';
-dash.draw('t_semanas', tb => cuerpo(tb, 'semanas_s', [['semana', S], ['fechas', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc], ['cambio_llamadas', cambioPct, claseCambio], ['cambio_pct_conect', cambioPts, claseCambio], ['cambio_pct_efec', cambioPts, claseCambio]]));
+dash.draw('t_semanas', tb => cuerpo(tb, 'semanas_s', [['semana', S], ['fechas', S, 'eq'], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['cambio_llamadas', cambioPct, claseCambio], ['cambio_pct_conect', cambioPts, claseCambio], ['cambio_pct_efec', cambioPts, claseCambio]]));
 const COLS_CMP = [['llamadas_a', n0], ['llamadas_b', n0], ['cambio_llamadas', v => cambioPct(v), claseCambio], ['pct_conect_a', pc], ['pct_conect_b', pc], ['cambio_pct_conect', v => cambioPts(v), claseCambio], ['pct_efec_a', pc], ['pct_efec_b', pc], ['cambio_pct_efec', v => cambioPts(v), claseCambio]];
 dash.draw('t_cmp_equipos', tb => cuerpo(tb, 'cmp_equipos', [['equipo', S], ...COLS_CMP]));
 dash.draw('t_cmp_asesoras', tb => cuerpo(tb, 'cmp_asesoras', [['asesora', S], ['equipo', S, 'eq'], ...COLS_CMP]));
@@ -627,7 +627,7 @@ dash.draw('ch_semanal', el => {
   rows.forEach(r => svg.append('rect').attr('x', x(r.semana)).attr('y', m.t).attr('width', x.bandwidth()).attr('height', h - m.b - m.t).style('fill', 'transparent')
     .on('mousemove', ev => tip.show([`${r.semana} · ${r.fechas}`, `${n0(r.llamadas)} llamadas`, `Conectadas: ${pc(r.pct_conect)}`, `% efectivas totales: ${pc(r.pct_efec)}`], ev)).on('mouseleave', () => tip.hide()));
 });
-dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc], ['primer_contacto', n0]]));
+dash.draw('t_intentos', tb => cuerpo(tb, 'intentos_s', [['intento', S], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['primer_contacto', n0]]));
 
 /* ---------- Utilidades de gráficos ---------- */
 function filasDe(id, el) {

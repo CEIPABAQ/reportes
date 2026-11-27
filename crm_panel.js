@@ -272,9 +272,9 @@ dash.calc('crm_canal_rinde', {
 });
 
 /* Tablas */
-dash.draw('t_crm_tipos', tb => cuerpo(tb, 'crm_tipos', [['tipo', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]));
-dash.draw('t_crm_etapas', tb => { cuerpo(tb, 'crm_etapas', [['etapa', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc]]); recortar(tb, 8); });
-dash.draw('t_crm_activadores', tb => cuerpoGrupos(tb, 'crm_activador_grupos', [['activador', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['pct_conect', pc], ['efectivas', n0], ['pct_efec', pc], ['pct_propias', pc]], 'hijos', 8));
+dash.draw('t_crm_tipos', tb => cuerpo(tb, 'crm_tipos', [['tipo', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]));
+dash.draw('t_crm_etapas', tb => { cuerpo(tb, 'crm_etapas', [['etapa', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc]]); recortar(tb, 8); });
+dash.draw('t_crm_activadores', tb => cuerpoGrupos(tb, 'crm_activador_grupos', [['activador', S], ['numeros', n0], ['llamadas', n0], ['conectadas', n0], ['efectivas', n0], ['pct_conect', pc], ['pct_efec', pc], ['pct_propias', pc]], 'hijos', 8));
 dash.draw('t_crm_velocidad', tb => cuerpo(tb, 'crm_velocidad', [['tramo', S], ['leads', n0], ['pct_leads', pc], ['pct_conect', pc], ['pct_efec', pc]]));
 dash.draw('t_crm_canal_rinde', tb => cuerpo(tb, 'crm_canal_rinde', [['canal', S], ['numeros', n0], ['por_lead', n1], ['pct_conect', pc], ['pct_leads_efec', pc]]));
 
